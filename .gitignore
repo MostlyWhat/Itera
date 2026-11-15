@@ -43,6 +43,7 @@ yarn-error.log
 /boost.json
 /opencode.json
 /opencode.jsonc
+/.impeccable
 
 # Wasmer deployment staging directory
 /deploy
