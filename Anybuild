@@ -11,8 +11,10 @@ config = laravel_config(
     php_version = "8.5",
     phpix = False,
     php_public_dir = "public",
+
     composer_enable = True,
     composer_build_script = "build:production",
+
     node_version = "24",
     node_package_manager = "npm",
     node_build_command = "npm run build",
@@ -24,9 +26,12 @@ custom = build(
     steps = laravel.steps,
     serve_deps = [
         dep("shira/php", "8.5.10"),
+        dep("bash"),
     ],
     mounts = laravel.mounts,
     env = laravel.env,
+
+    app = laravel.app,
 )
 
 laravel_serve(
