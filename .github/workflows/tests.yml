@@ -5,6 +5,7 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -36,3 +37,91 @@ jobs:
 
       - name: Run CI Checks
         run: composer ci:check
+
+  deploy:
+    name: Deploy to Wasmer Edge
+    needs: ci
+    # Deploy only from main: on a push, or on a manual run of this workflow.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+      url: https://itera.wasmer.app
+
+    # Run one production deployment at a time. Do not cancel a running deployment.
+    concurrency:
+      group: wasmer-production
+      cancel-in-progress: false
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, intl, bcmath, pdo_pgsql, pdo_sqlite, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      # Production dependencies only. Wayfinder is a production dependency,
+      # so the frontend build can generate the routes without dev packages.
+      - name: Install Composer dependencies
+        run: composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader --no-scripts
+
+      # Package discovery and asset publishing. This script does not run Boost.
+      - name: Run production Composer script
+        run: composer run build:production
+
+      - name: Install npm dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Stage deployment package
+        run: bash scripts/wasmer/stage.sh
+
+      - name: Setup Wasmer
+        uses: wasmerio/setup-wasmer@24b15c95293d23f89c68bd40dac76338f773e924 # v3.1
+
+      # Native PHP runs the migrations one time, before the new version goes live.
+      # The script reads the database credentials from the Wasmer app secrets.
+      - name: Run database migrations
+        env:
+          WASMER_TOKEN: ${{ secrets.WASMER_TOKEN }}
+        run: bash scripts/wasmer/migrate.sh
+
+      # The CLI reads the token from WASMER_TOKEN. --bump sets the package version
+      # to the latest registry version plus one patch, so each run can publish.
+      - name: Deploy to Wasmer Edge
+        env:
+          WASMER_TOKEN: ${{ secrets.WASMER_TOKEN }}
+        run: wasmer deploy --non-interactive --publish-package --bump
+
+      - name: Check the deployed application
+        run: curl --fail --silent --show-error --retry 5 --retry-delay 10 --retry-all-errors https://itera.wasmer.app/up

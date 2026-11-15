@@ -1,0 +1,32 @@
+kind: wasmer.io/App.v0
+name: itera
+owner: mostlywhat
+package: .
+env:
+  APP_NAME: Itera
+  APP_ENV: production
+  APP_DEBUG: 'false'
+  APP_URL: https://itera.wasmer.app
+  LOG_CHANNEL: stderr
+  LOG_LEVEL: warning
+  DB_CONNECTION: pgsql
+  SESSION_DRIVER: database
+  SESSION_SECURE_COOKIE: 'true'
+  CACHE_STORE: database
+  QUEUE_CONNECTION: sync
+  MAIL_MAILER: log
+capabilities:
+  database:
+    engine: postgres
+health_checks:
+- !http
+  path: /up
+  method: get
+  timeout: 10s
+  interval: 30s
+  unhealthy_threshold: 3
+  healthy_threshold: 1
+debug: false
+scaling:
+  mode: single_concurrency
+app_id: da_R9EIBt1Uk7bq
