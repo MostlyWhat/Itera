@@ -16,7 +16,7 @@ Itera runs on [Wasmer Edge](https://docs.wasmer.io/edge/). GitHub Actions builds
 
 ### CI/CD
 
-The `deploy` job in `.github/workflows/tests.yml` starts after the `ci` job passes. It runs only for a push to `main` or a manual run on `main`. It never runs for a pull request. One production deployment runs at a time.
+The `deploy` job in `.github/workflows/ci.yml` starts after the `ci` job passes. It runs only for a push to `main` or a manual run on `main`. It never runs for a pull request. One production deployment runs at a time.
 
 The job does these steps:
 
