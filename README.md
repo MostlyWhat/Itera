@@ -30,8 +30,8 @@ The `--bump` flag sets the package version to the latest registry version plus o
 
 ### GitHub secrets
 
-| Name | Value |
-| --- | --- |
+| Name           | Value                                                                                            |
+| -------------- | ------------------------------------------------------------------------------------------------ |
 | `WASMER_TOKEN` | A Wasmer API token from <https://wasmer.io/settings/access-tokens> for the `mostlywhat` account. |
 
 The workflow uses the `production` GitHub environment. GitHub makes it on the first run.

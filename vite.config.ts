@@ -60,6 +60,11 @@ export default defineConfig({
             typeAware: true,
         },
     },
+    // Pre-commit tasks for staged files. The .vite-hooks/pre-commit hook runs them.
+    staged: {
+        '*.{js,mjs,cjs,ts,svelte,css,json,md,yml,yaml}': 'vp check --fix',
+        '*.php': 'php vendor/bin/pint',
+    },
     fmt: {
         printWidth: 80,
         tabWidth: 4,
@@ -69,6 +74,8 @@ export default defineConfig({
         htmlWhitespaceSensitivity: 'css',
         ignorePatterns: [
             '.github/**',
+            // The Wasmer CLI rewrites app.yaml with its own format on each deploy.
+            'app.yaml',
             'composer.json',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
