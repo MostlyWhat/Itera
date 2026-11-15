@@ -8,6 +8,7 @@ load(
 
 config = laravel_config(
     schema = 1,
+    php_framework = "laravel",
     php_version = "8.5",
     phpix = False,
     php_public_dir = "public",
@@ -30,7 +31,6 @@ custom = build(
     ],
     mounts = laravel.mounts,
     env = laravel.env,
-
     app = laravel.app,
 )
 
@@ -38,8 +38,4 @@ laravel_serve(
     config,
     custom,
     name = "itera",
-    commands = {
-        "start": "php -S 0.0.0.0:8080 -t public",
-        "after_deploy": "php artisan migrate --force",
-    },
 )
