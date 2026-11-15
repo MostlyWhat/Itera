@@ -51,6 +51,17 @@ If Wasmer gives the app a different URL, change `APP_URL` in `app.yaml` and the 
 
 `app.yaml` requests a managed PostgreSQL database (`capabilities.database.engine: postgres`). Wasmer gives these variables to the app: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, and `DB_PASSWORD`. Laravel uses `DB_DATABASE`, so `config/database.php` reads `DB_NAME` when `DB_DATABASE` is not set. `app.yaml` sets `DB_CONNECTION=pgsql`.
 
+### Email
+
+Itera sends email through [Resend](https://resend.com) with Laravel's `smtp` mailer. Email verification, password reset, and team invitations need it. `app.yaml` sets the host (`smtp.resend.com`), the port (`587`, STARTTLS), and the username (`resend`). Set the API key and the sender address as Wasmer secrets:
+
+```bash
+wasmer app secret create MAIL_PASSWORD "re_..." --app mostlywhat/itera
+wasmer app secret create MAIL_FROM_ADDRESS "no-reply@your-domain.example" --app mostlywhat/itera
+```
+
+The sender address must use a domain that you verified in Resend. Redeploy after you change a secret.
+
 ### First deployment
 
 The `itera` app already exists (`app_id` in `app.yaml`). For a new app, do these steps:

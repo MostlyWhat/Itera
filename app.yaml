@@ -14,7 +14,11 @@ env:
     SESSION_SECURE_COOKIE: 'true'
     CACHE_STORE: database
     QUEUE_CONNECTION: sync
-    MAIL_MAILER: log
+    MAIL_MAILER: smtp
+    MAIL_HOST: smtp.resend.com
+    MAIL_PORT: '587'
+    MAIL_USERNAME: resend
+    MAIL_FROM_NAME: Itera
 capabilities:
     database:
         engine: postgres
