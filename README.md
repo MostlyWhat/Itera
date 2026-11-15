@@ -28,6 +28,16 @@ The job does these steps:
 
 The `--bump` flag sets the package version to the latest registry version plus one patch. Thus each run publishes a new version, although `wasmer.toml` keeps `0.1.0`.
 
+To skip jobs, put a marker in the commit message. For a push, GitHub reads only the last commit. For a pull request, put the marker in the title.
+
+| Marker          | Tests | Deploy          |
+| --------------- | ----- | --------------- |
+| `[skip ci]`     | No    | No              |
+| `[skip tests]`  | No    | Yes (on `main`) |
+| `[skip deploy]` | Yes   | No              |
+
+Example: `docs: fix typo in README [skip deploy]`. Use `[skip tests]` only for changes that cannot break the build.
+
 ### GitHub secrets
 
 | Name           | Value                                                                                            |

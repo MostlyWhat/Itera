@@ -10,8 +10,14 @@ on:
 permissions:
   contents: read
 
+# Commit message markers (GitHub reads the last commit of a push, or the PR title):
+#   [skip ci]     GitHub skips the whole workflow (built-in, no tests and no deploy).
+#   [skip tests]  Skip the ci job. The deploy job still runs on main.
+#   [skip deploy] Run the ci job, but do not deploy.
+
 jobs:
   ci:
+    if: ${{ !contains(github.event.head_commit.message || github.event.pull_request.title || '', '[skip tests]') }}
     runs-on: ubuntu-latest
 
     steps:
@@ -42,7 +48,15 @@ jobs:
     name: Deploy to Wasmer Edge
     needs: ci
     # Deploy only from main: on a push, or on a manual run of this workflow.
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    # The ci job must pass, or be skipped with [skip tests].
+    if: >-
+      ${{
+        !cancelled()
+        && github.ref == 'refs/heads/main'
+        && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        && (needs.ci.result == 'success' || needs.ci.result == 'skipped')
+        && !contains(github.event.head_commit.message || '', '[skip deploy]')
+      }}
     runs-on: ubuntu-latest
 
     environment:
