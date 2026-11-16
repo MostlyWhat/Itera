@@ -24,8 +24,15 @@ class EnsureTeamMembership
 
         $this->ensureTeamMemberHasRequiredRole($user, $team, $minimumRole);
 
-        if ($request->route('current_team') && ! $user->isCurrentTeam($team)) {
-            $user->switchTeam($team);
+        if ($request->route('current_team')) {
+            if (! $user->isCurrentTeam($team)) {
+                $user->switchTeam($team);
+            }
+
+            // The team is now the user's current team. Remove the slug from the
+            // route parameters, so controller methods such as update(Area $area)
+            // get only their own models and not the slug as the first argument.
+            $request->route()?->forgetParameter('current_team');
         }
 
         return $next($request);
