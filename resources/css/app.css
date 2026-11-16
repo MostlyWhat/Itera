@@ -36,13 +36,16 @@
     --font-mono:
         ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
 
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
+    /* Whole-pixel steps (4, 6, 8, 12, 16, 24, 32 px). A container's radius is
+       its child's radius plus the padding between them, so nested corners
+       stay concentric: a 4px item in a 4px-padded menu needs an 8px menu. */
+    --radius-sm: calc(var(--radius) * 0.5);
+    --radius-md: calc(var(--radius) * 0.75);
     --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
+    --radius-xl: calc(var(--radius) * 1.5);
+    --radius-2xl: calc(var(--radius) * 2);
+    --radius-3xl: calc(var(--radius) * 3);
+    --radius-4xl: calc(var(--radius) * 4);
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);

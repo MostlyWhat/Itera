@@ -194,7 +194,7 @@
                     <section
                         aria-labelledby={`column-${column.status}`}
                         class={cn(
-                            'flex min-h-48 flex-col rounded-lg border bg-muted/30 transition-colors',
+                            'flex min-h-48 flex-col rounded-xl border bg-muted/30 transition-colors',
                             dropTarget === column.status
                                 ? 'border-primary bg-accent/60'
                                 : 'border-border',
@@ -214,7 +214,7 @@
                         }}
                     >
                         <header
-                            class="flex items-baseline justify-between gap-2 border-b border-border px-3 py-2.5"
+                            class="flex items-baseline justify-between gap-2 border-b border-border px-4.5 py-2.5"
                         >
                             <h2 id={`column-${column.status}`} class="text-sm font-semibold">
                                 {column.label}
@@ -227,7 +227,7 @@
                             >
                         </header>
 
-                        <ul class="flex flex-col gap-2 p-2">
+                        <ul class="flex flex-col gap-1.5 p-1.5">
                             {#each items as card (card.taskId)}
                                 <li
                                     draggable="true"

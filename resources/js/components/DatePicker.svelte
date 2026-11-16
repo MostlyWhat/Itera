@@ -55,7 +55,7 @@
             </Button>
         {/snippet}
     </PopoverTrigger>
-    <PopoverContent class="w-auto gap-0 overflow-hidden p-0" align="start">
+    <PopoverContent class="w-auto gap-0 overflow-hidden rounded-xl p-0" align="start">
         <Calendar
             type="single"
             bind:value={selected}
