@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Validate a new or edited Task. Story points must be 1, 2, 3, 5, or 8.
+ * Validate a new or edited Task. Story points must be a Fibonacci value from 1 to 21.
  * The deadline and the story points are optional.
  */
 class SaveTaskRequest extends FormRequest
@@ -37,7 +37,7 @@ class SaveTaskRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'story_points.enum' => __('Choose 1, 2, 3, 5, or 8 story points.'),
+            'story_points.enum' => __('Choose 1, 2, 3, 5, 8, 13, or 21 story points.'),
             'due_date.date_format' => __('Enter the deadline as a date.'),
         ];
     }

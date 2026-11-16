@@ -23,7 +23,7 @@ test('story points are stored as the allowed values', function () {
     $task = Task::factory()->create(['story_points' => StoryPoints::Five]);
 
     expect($task->fresh()->story_points)->toBe(StoryPoints::Five)
-        ->and(StoryPoints::values())->toBe([1, 2, 3, 5, 8]);
+        ->and(StoryPoints::values())->toBe([1, 2, 3, 5, 8, 13, 21]);
 });
 
 test('a task is overdue only when the deadline has passed and it is not done', function () {

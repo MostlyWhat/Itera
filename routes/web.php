@@ -28,6 +28,7 @@ Route::prefix('{current_team}')
         Route::delete('projects/{project}/archive', [ProjectController::class, 'unarchive'])->name('projects.unarchive');
 
         // Tasks (ITERA-03)
+        Route::get('projects', [TaskController::class, 'projects'])->name('projects.index');
         Route::get('projects/{project}', [TaskController::class, 'index'])->name('projects.show');
         Route::post('projects/{project}/tasks', [TaskController::class, 'store'])->name('tasks.store');
         Route::patch('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');

@@ -1,6 +1,5 @@
 <script module lang="ts">
-    import { index as areasIndex } from '@/routes/areas';
-    import { show } from '@/routes/projects';
+    import { index as projectsIndex, show } from '@/routes/projects';
     import type { Team } from '@/types';
 
     export const layout = (props: {
@@ -9,8 +8,8 @@
     }) => ({
         breadcrumbs: [
             {
-                title: 'Areas',
-                href: areasIndex(props.currentTeam?.slug ?? ''),
+                title: 'Projects',
+                href: projectsIndex(props.currentTeam?.slug ?? ''),
             },
             {
                 title: props.project.name,
@@ -26,7 +25,6 @@
 <script lang="ts">
     import { Link, page, router } from '@inertiajs/svelte';
     import Add from 'carbon-icons-svelte/lib/Add.svelte';
-    import ArrowLeft from 'carbon-icons-svelte/lib/ArrowLeft.svelte';
     import Calendar from 'carbon-icons-svelte/lib/Calendar.svelte';
     import Checkmark from 'carbon-icons-svelte/lib/Checkmark.svelte';
     import ChevronRight from 'carbon-icons-svelte/lib/ChevronRight.svelte';
@@ -36,6 +34,9 @@
     import TrashCan from 'carbon-icons-svelte/lib/TrashCan.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
+    import ProjectSelector, {
+        type NavigationArea,
+    } from '@/components/tasks/ProjectSelector.svelte';
     import TaskForm from '@/components/tasks/TaskForm.svelte';
     import {
         AlertDialog,
@@ -56,6 +57,7 @@
         DropdownMenuTrigger,
     } from '@/components/ui/dropdown-menu';
     import { cn } from '@/lib/utils';
+    import { index as areasIndex } from '@/routes/areas';
     import {
         destroy as destroyTask,
         store as storeTask,
@@ -73,11 +75,13 @@
     };
 
     let {
+        navigation,
         project,
         tasks,
         storyPointOptions,
         statusOptions,
     }: {
+        navigation: NavigationArea[];
         project: {
             id: number;
             name: string;
@@ -274,16 +278,18 @@
     </li>
 {/snippet}
 
-<div class="flex flex-col px-4 py-8 sm:py-10">
-    <Link
-        href={areasIndex(team)}
-        class="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-    >
-        <ArrowLeft class="size-4" />
-        {project.areaName}
-    </Link>
+<div
+    class="grid gap-6 px-4 py-8 sm:py-10 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10"
+>
+    <aside class="lg:sticky lg:top-6 lg:self-start">
+        <ProjectSelector {navigation} {team} currentId={project.id} />
+    </aside>
 
+    <div class="flex min-w-0 flex-col">
     <header class="mb-6 space-y-2">
+        <p class="text-xs font-medium text-muted-foreground">
+            {project.areaName}
+        </p>
         <h1 class="type-title">{project.name}</h1>
         <p class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground tabular-nums">
             <span>{openTasks.length} open {openTasks.length === 1 ? 'task' : 'tasks'}</span>
@@ -372,6 +378,7 @@
             </details>
         {/if}
     {/if}
+    </div>
 </div>
 
 <AlertDialog

@@ -10,7 +10,8 @@ return new class extends Migration
      * Run the migrations.
      *
      * A Task belongs to one Project. Story points sit on the parent Task
-     * only (1, 2, 3, 5, or 8). Subtasks come in ITERA-06 and give no points.
+     * only (Fibonacci: 1, 2, 3, 5, 8, 13, or 21). Subtasks come in ITERA-06
+     * and give no points.
      * The recurrence columns come with recurring tasks in ITERA-09.
      */
     public function up(): void

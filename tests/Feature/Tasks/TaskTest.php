@@ -11,7 +11,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 /*
  * ITERA-03: users create and edit Tasks under a Project, give parent Tasks
- * 1, 2, 3, 5, or 8 story points, set deadlines, and see overdue Tasks.
+ * Fibonacci story points (1 to 21), set deadlines, and see overdue Tasks.
  */
 
 afterEach(fn () => Carbon::setTestNow());
@@ -54,7 +54,7 @@ test('the project page lists its tasks and marks overdue tasks', function () {
             ->where('tasks.0.dueDate', '2026-11-14')
             ->where('tasks.0.isOverdue', true)
             ->where('tasks.1.isOverdue', false)
-            ->where('storyPointOptions', [1, 2, 3, 5, 8]));
+            ->where('storyPointOptions', [1, 2, 3, 5, 8, 13, 21]));
 });
 
 test('users can create a task with story points and a deadline', function () {
@@ -106,7 +106,7 @@ test('a task rejects invalid input', function (array $input, string $field) {
     'missing title' => [['title' => ''], 'title'],
     'title too long' => [['title' => str_repeat('a', 201)], 'title'],
     '4 story points' => [['story_points' => 4], 'story_points'],
-    '13 story points' => [['story_points' => 13], 'story_points'],
+    '34 story points' => [['story_points' => 34], 'story_points'],
     '0 story points' => [['story_points' => 0], 'story_points'],
     'text story points' => [['story_points' => 'large'], 'story_points'],
     'invalid deadline' => [['due_date' => 'next friday'], 'due_date'],
@@ -121,7 +121,7 @@ test('every allowed story point value is accepted', function (int $points) {
         ->assertSessionHasNoErrors();
 
     expect($project->tasks()->sole()->story_points->value)->toBe($points);
-})->with([1, 2, 3, 5, 8]);
+})->with([1, 2, 3, 5, 8, 13, 21]);
 
 test('users can edit a task', function () {
     [$user, $project, $slug] = userWithProject();
@@ -216,4 +216,43 @@ test('the areas page shows open and overdue task counts for each project', funct
         ->assertInertia(fn (Assert $page) => $page
             ->where('areas.0.projects.0.openTasks', 2)
             ->where('areas.0.projects.0.overdueTasks', 1));
+});
+
+test('the projects page opens the first active project', function () {
+    $user = User::factory()->create();
+    $team = $user->currentTeam;
+    $archivedArea = Area::factory()->for($team)->archived()->create();
+    Project::factory()->for($archivedArea)->create();
+    $area = Area::factory()->for($team)->create();
+    Project::factory()->for($area)->archived()->create();
+    $first = Project::factory()->for($area)->create();
+
+    $this->actingAs($user)
+        ->get(route('projects.index', $team->slug))
+        ->assertRedirect(route('projects.show', [$team->slug, $first]));
+});
+
+test('the projects page sends users without projects to the areas page', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('projects.index', $user->currentTeam->slug))
+        ->assertRedirect(route('areas.index', $user->currentTeam->slug));
+});
+
+test('the project page lists all active projects for the selector', function () {
+    Carbon::setTestNow('2026-11-16 09:00');
+    [$user, $project, $slug] = userWithProject();
+    $other = Project::factory()->for($project->area)->create(['name' => 'Midterm review']);
+    Project::factory()->for($project->area)->archived()->create(['name' => 'Old']);
+    Task::factory()->for($other)->create(['due_date' => '2026-11-10']);
+
+    $this->actingAs($user)
+        ->get(route('projects.show', [$slug, $project]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('navigation', 1)
+            ->has('navigation.0.projects', 2)
+            ->where('navigation.0.projects.0.name', 'Lab report')
+            ->where('navigation.0.projects.1.name', 'Midterm review')
+            ->where('navigation.0.projects.1.overdueTasks', 1));
 });
