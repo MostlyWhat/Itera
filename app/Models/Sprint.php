@@ -94,6 +94,31 @@ class Sprint extends Model
     }
 
     /**
+     * Determine if the Sprint week has ended.
+     */
+    public function isPast(): bool
+    {
+        return $this->week_end->isBefore(today());
+    }
+
+    /**
+     * Determine if the plan can still change: the Sprint is open and its week
+     * has not ended.
+     */
+    public function isEditable(): bool
+    {
+        return $this->status === SprintStatus::Open && ! $this->isPast();
+    }
+
+    /**
+     * Get the sum of the committed story points.
+     */
+    public function committedPoints(): int
+    {
+        return (int) $this->commitments->sum('committed_points');
+    }
+
+    /**
      * Scope the query to open Sprints whose week has not ended. A Task can be
      * in only one of these at a time.
      *
