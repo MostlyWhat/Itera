@@ -46,7 +46,7 @@ test('the project page lists its tasks and marks overdue tasks', function () {
         ->get(route('projects.show', [$slug, $project]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('projects/Show', false)
+            ->component('projects/Show')
             ->where('project.name', 'Lab report')
             ->has('tasks', 2)
             ->where('tasks.0.title', 'Write the method section')
