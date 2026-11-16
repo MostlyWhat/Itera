@@ -25,14 +25,15 @@
 
 <script lang="ts">
     import { Form, page, router } from '@inertiajs/svelte';
+    import { tick } from 'svelte';
     import Add from 'carbon-icons-svelte/lib/Add.svelte';
     import Close from 'carbon-icons-svelte/lib/Close.svelte';
+    import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
     import Search from 'carbon-icons-svelte/lib/Search.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
     import InputError from '@/components/InputError.svelte';
     import PointsMeter from '@/components/sprints/PointsMeter.svelte';
-    import WeekStrip from '@/components/sprints/WeekStrip.svelte';
     import { Button } from '@/components/ui/button';
     import { Input } from '@/components/ui/input';
     import {
@@ -98,6 +99,11 @@
     );
 
     let busy = $state(false);
+    // The goal and the new-task form open on request. A sprint without a
+    // goal opens with the goal form, because the goal comes first.
+    // svelte-ignore state_referenced_locally
+    let editingGoal = $state(sprint.editable && !sprint.goal);
+    let addingTask = $state(false);
     let filter = $state('');
 
     const committedIds = $derived(
@@ -121,17 +127,6 @@
                       .includes(query),
               );
     });
-    const backlogGroups = $derived.by(() => {
-        const byProject = new Map<string, Candidate[]>();
-
-        for (const task of filtered) {
-            const key = `${task.areaName} · ${task.projectName}`;
-            byProject.set(key, [...(byProject.get(key) ?? []), task]);
-        }
-
-        return [...byProject.entries()].map(([name, tasks]) => ({ name, tasks }));
-    });
-
     // The new-task form: the project stays for the next task, the points reset.
     // svelte-ignore state_referenced_locally
     let newProject = $state(projects[0] ? String(projects[0].id) : '');
@@ -178,18 +173,33 @@
 
 <div class="flex flex-col gap-6 px-4 py-8 sm:py-10">
     <header class="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-        <div class="space-y-1.5">
+        <div class="min-w-0 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
                 <h1 class="type-title">{weekName(sprint.weekStart)}</h1>
-                <span
-                    class={cn(
-                        'rounded-sm px-1.5 py-0.5 text-xs font-medium',
-                        sprint.timing === 'past'
-                            ? 'bg-muted text-muted-foreground'
-                            : 'bg-accent text-accent-foreground',
-                    )}>{timingLabel}</span
-                >
+                {#if sprint.timing === 'past'}
+                    <span class="rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
+                        >{timingLabel}</span
+                    >
+                {/if}
             </div>
+            {#if !editingGoal}
+                <p class="flex flex-wrap items-center gap-x-2 text-sm">
+                    <span class={cn('wrap-break-word', !sprint.goal && 'text-muted-foreground')}
+                        >{sprint.goal ?? 'No goal'}</span
+                    >
+                    {#if sprint.editable}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            class="h-7 gap-1 px-1.5 text-muted-foreground hover:text-foreground"
+                            onclick={() => (editingGoal = true)}
+                        >
+                            <Edit class="size-3.5" />
+                            Edit goal
+                        </Button>
+                    {/if}
+                </p>
+            {/if}
             <p class="text-sm text-muted-foreground tabular-nums">
                 {formatWeekRange(sprint.weekStart, sprint.weekEnd)} · {sprint.taskCount}
                 {sprint.taskCount === 1 ? 'task' : 'tasks'}
@@ -202,12 +212,12 @@
         />
     </header>
 
-    <WeekStrip weekStart={sprint.weekStart} />
-
     {#if sprint.editable}
+        {#if editingGoal}
         <Form
             {...update.form({ current_team: team, sprint: sprint.id })}
             options={{ preserveScroll: true }}
+            onSuccess={() => (editingGoal = false)}
             class="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-4"
         >
             {#snippet children({ processing, isDirty })}
@@ -244,17 +254,19 @@
                             class="w-28"
                         />
                     </div>
-                    <Button
-                        type="submit"
-                        variant={isDirty ? 'default' : 'outline'}
-                        disabled={processing || !isDirty}
-                    >
+                    {#if sprint.goal}
+                        <Button type="button" variant="ghost" onclick={() => (editingGoal = false)}>
+                            Cancel
+                        </Button>
+                    {/if}
+                    <Button type="submit" disabled={processing || (!isDirty && !!sprint.goal)}>
                         Save goal
                     </Button>
                 </div>
                 <InputError message={errors.goal ?? errors.target_points} />
             {/snippet}
         </Form>
+        {/if}
 
         <div class="grid gap-6 lg:grid-cols-2 lg:items-start">
             <!-- The sprint: the work for this week. -->
@@ -266,6 +278,7 @@
                     >
                 </h2>
 
+                {#if addingTask}
                 <Form
                     {...storeSprintTask.form({ current_team: team, sprint: sprint.id })}
                     options={{ preserveScroll: true }}
@@ -279,7 +292,7 @@
                         </p>
                         {#if projects.length === 0}
                             <p class="text-sm text-muted-foreground">
-                                Create a project first, on the Areas page.
+                                Create a project first, on the Projects page.
                             </p>
                         {:else}
                             <div class="flex flex-col gap-2">
@@ -291,6 +304,11 @@
                                     placeholder="What needs to be done?"
                                     autocomplete="off"
                                     required
+                                    onkeydown={(event: KeyboardEvent) => {
+                                        if (event.key === 'Escape') {
+                                            addingTask = false;
+                                        }
+                                    }}
                                 />
                                 <div class="flex flex-wrap items-center gap-2">
                                     <label for="new-task-project" class="sr-only">Project</label>
@@ -336,8 +354,14 @@
                                             {/each}
                                         </SelectContent>
                                     </Select>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onclick={() => (addingTask = false)}
+                                    >
+                                        Cancel
+                                    </Button>
                                     <Button type="submit" disabled={processing}>
-                                        <Add class="size-4" />
                                         Add
                                     </Button>
                                 </div>
@@ -350,13 +374,27 @@
                         {/if}
                     {/snippet}
                 </Form>
+                {:else}
+                    <Button
+                        variant="outline"
+                        class="w-full justify-start gap-2 border-dashed text-muted-foreground hover:text-foreground"
+                        onclick={async () => {
+                            addingTask = true;
+                            await tick();
+                            document.getElementById('new-task-title')?.focus();
+                        }}
+                    >
+                        <Add class="size-4" />
+                        New task in this sprint
+                    </Button>
+                {/if}
 
                 {#if commitments.length === 0}
                     <p
                         class="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground"
                     >
-                        No tasks yet. Add a new task above, or add one from the
-                        backlog.
+                        No tasks yet. Add tasks from the backlog, or make a new
+                        one.
                     </p>
                 {:else}
                     <ul class="overflow-hidden rounded-lg border border-border bg-card">
@@ -424,43 +462,36 @@
                     >
                         The backlog is empty. All open tasks are in a sprint.
                     </p>
-                {:else if backlogGroups.length === 0}
+                {:else if filtered.length === 0}
                     <p class="px-1 text-sm text-muted-foreground">
                         No task matches "{filter}".
                     </p>
-                {/if}
-
-                {#each backlogGroups as group (group.name)}
-                    <div class="overflow-hidden rounded-lg border border-border bg-card">
-                        <h3
-                            class="border-b border-border bg-muted/30 px-4 py-2 text-xs font-medium text-muted-foreground"
-                        >
-                            {group.name}
-                        </h3>
-                        <ul>
-                            {#each group.tasks as task (task.id)}
-                                {@const taken = task.takenBy !== null}
-                                <li
-                                    class={cn(
-                                        'flex min-h-12 items-center gap-3 border-t border-border py-2 pr-2 pl-4 first:border-t-0',
-                                        taken && 'opacity-60',
-                                    )}
-                                >
-                                    <span class="flex min-w-0 flex-1 flex-col">
-                                        <span class="wrap-break-word text-sm">{task.title}</span>
+                {:else}
+                    <ul class="overflow-hidden rounded-lg border border-border bg-card">
+                        {#each filtered as task (task.id)}
+                            {@const taken = task.takenBy !== null}
+                            <li
+                                class={cn(
+                                    'flex min-h-12 items-center gap-3 border-t border-border py-2 pr-2 pl-4 first:border-t-0',
+                                    taken && 'opacity-60',
+                                )}
+                            >
+                                <span class="flex min-w-0 flex-1 flex-col">
+                                    <span class="text-sm wrap-break-word">{task.title}</span>
+                                    <span
+                                        class="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground tabular-nums"
+                                    >
+                                        <span class="wrap-break-word">{task.projectName}</span>
                                         {#if taken && task.takenBy}
-                                            <span class="text-xs text-muted-foreground"
-                                                >In the sprint of {formatShortDate(task.takenBy)}</span
-                                            >
+                                            <span>· In the sprint of {formatShortDate(task.takenBy)}</span>
                                         {:else if task.dueDate}
                                             <span
                                                 class={cn(
-                                                    'flex items-center gap-1 text-xs tabular-nums',
-                                                    task.isOverdue
-                                                        ? 'font-medium text-destructive'
-                                                        : 'text-muted-foreground',
+                                                    'flex items-center gap-1',
+                                                    task.isOverdue && 'font-medium text-destructive',
                                                 )}
                                             >
+                                                ·
                                                 {#if task.isOverdue}
                                                     <WarningAltFilled class="size-3.5" />
                                                     Overdue,
@@ -471,25 +502,25 @@
                                             </span>
                                         {/if}
                                     </span>
-                                    <span class="shrink-0 text-xs text-muted-foreground tabular-nums"
-                                        >{pointsLabel(task.points)}</span
-                                    >
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        class="h-8 shrink-0"
-                                        aria-label={`Add ${task.title} to the sprint`}
-                                        disabled={busy || taken}
-                                        onclick={() => addExisting(task.id)}
-                                    >
-                                        <Add class="size-4" />
-                                        Add
-                                    </Button>
-                                </li>
-                            {/each}
-                        </ul>
-                    </div>
-                {/each}
+                                </span>
+                                <span class="shrink-0 text-xs text-muted-foreground tabular-nums"
+                                    >{pointsLabel(task.points)}</span
+                                >
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="h-8 shrink-0"
+                                    aria-label={`Add ${task.title} to the sprint`}
+                                    disabled={busy || taken}
+                                    onclick={() => addExisting(task.id)}
+                                >
+                                    <Add class="size-4" />
+                                    Add
+                                </Button>
+                            </li>
+                        {/each}
+                    </ul>
+                {/if}
             </section>
         </div>
     {:else}

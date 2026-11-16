@@ -14,6 +14,7 @@
 
 <script lang="ts">
     import { Form, Link, page } from '@inertiajs/svelte';
+    import Add from 'carbon-icons-svelte/lib/Add.svelte';
     import ChevronRight from 'carbon-icons-svelte/lib/ChevronRight.svelte';
     import AppHead from '@/components/AppHead.svelte';
     import InputError from '@/components/InputError.svelte';
@@ -69,31 +70,52 @@
 
     const sundayOf = (monday: string) =>
         toDateString(addDays(parseDate(monday), 6));
+
+    // The plan form stays closed until the user asks for it, except when
+    // there is no sprint yet. The list of sprints is the page.
+    const hasCurrent = $derived(sprints.some((sprint) => sprint.timing === 'current'));
+    // svelte-ignore state_referenced_locally
+    let planning = $state(sprints.length === 0);
 </script>
 
 <AppHead title="Sprints" />
 
 <div class="flex flex-col gap-8 px-4 py-8 sm:py-10">
-    <header class="space-y-1">
+    <header class="flex flex-wrap items-center justify-between gap-4">
         <h1 class="type-title">Sprints</h1>
-        <p class="max-w-prose text-sm text-muted-foreground">
-            A sprint is one Monday-to-Sunday week. Give it a goal and a story
-            point target, then choose the tasks that fit.
-        </p>
+        {#if freeWeeks.length > 0 && !planning}
+            <Button onclick={() => (planning = true)}>
+                <Add class="size-4" />
+                Plan a sprint
+            </Button>
+        {/if}
     </header>
 
+    {#if !hasCurrent && !planning && freeWeeks.length > 0}
+        <div
+            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-border px-4 py-4"
+        >
+            <p class="text-sm">
+                <span class="font-medium">This week has no sprint.</span>
+                <span class="text-muted-foreground">Plan it to see your tasks on the board.</span>
+            </p>
+            <Button variant="outline" onclick={() => (planning = true)}>Plan this week</Button>
+        </div>
+    {/if}
+
+    {#if planning && freeWeeks.length > 0}
     <section
         class="rounded-lg border border-border bg-card p-4 sm:p-5"
         aria-labelledby="plan-title"
     >
-        <h2 id="plan-title" class="type-section mb-4">Plan a sprint</h2>
-
-        {#if freeWeeks.length === 0}
+        <div class="mb-4 space-y-1">
+            <h2 id="plan-title" class="type-section">Plan a sprint</h2>
             <p class="text-sm text-muted-foreground">
-                The next weeks already have sprints. Open one below to change
-                its plan.
+                Pick a Monday-to-Sunday week, a goal, and how many points fit. You
+                choose the tasks next.
             </p>
-        {:else}
+        </div>
+
             <Form {...store.form(team)} class="flex flex-col gap-5">
                 {#snippet children({ errors, processing })}
                     <fieldset>
@@ -161,18 +183,20 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                        <p class="text-xs text-muted-foreground">
-                            You choose the tasks on the next page.
-                        </p>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        {#if sprints.length > 0}
+                            <Button type="button" variant="ghost" onclick={() => (planning = false)}>
+                                Cancel
+                            </Button>
+                        {/if}
                         <Button type="submit" disabled={processing}>
                             Create sprint
                         </Button>
                     </div>
                 {/snippet}
             </Form>
-        {/if}
     </section>
+    {/if}
 
     {#each groups as group (group.timing)}
         <section aria-labelledby={`group-${group.timing}`}>
