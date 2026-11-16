@@ -13,16 +13,16 @@
 
 <script lang="ts">
     import { Link } from '@inertiajs/svelte';
-    import Eye from '@lucide/svelte/icons/eye';
-    import LogOut from '@lucide/svelte/icons/log-out';
-    import Pencil from '@lucide/svelte/icons/pencil';
-    import Plus from '@lucide/svelte/icons/plus';
+    import View from 'carbon-icons-svelte/lib/View.svelte';
+    import Logout from 'carbon-icons-svelte/lib/Logout.svelte';
+    import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
+    import Add from 'carbon-icons-svelte/lib/Add.svelte';
     import AppHead from '@/components/AppHead.svelte';
     import CreateTeamModal from '@/components/CreateTeamModal.svelte';
     import Heading from '@/components/Heading.svelte';
     import LeaveTeamModal from '@/components/LeaveTeamModal.svelte';
     import { Badge } from '@/components/ui/badge';
-    import { Button } from '@/components/ui/button';
+    import { Button, buttonVariants } from '@/components/ui/button';
     import {
         Tooltip,
         TooltipContent,
@@ -40,19 +40,6 @@
 
     let leaveTeamDialogOpen = $state(false);
     let teamLeaving = $state<Team | null>(null);
-
-    const callClickHandler = (handler: unknown, event: MouseEvent) => {
-        if (typeof handler === 'function') {
-            handler(event);
-        }
-    };
-
-    const handleCreateTeamClick = (
-        props: Record<string, unknown>,
-        event: MouseEvent,
-    ) => {
-        callClickHandler(props.onClick, event);
-    };
 
     const openLeaveTeamDialog = (team: Team) => {
         teamLeaving = team;
@@ -74,11 +61,8 @@
 
         <CreateTeamModal>
             {#snippet children(props)}
-                <Button
-                    onclick={(event) => handleCreateTeamClick(props, event)}
-                    data-test="teams-new-team-button"
-                >
-                    <Plus class="h-4 w-4" /> New team
+                <Button {...props} data-test="teams-new-team-button">
+                    <Add class="h-4 w-4" /> New team
                 </Button>
             {/snippet}
         </CreateTeamModal>
@@ -120,7 +104,7 @@
                                                 openLeaveTeamDialog(team)}
                                             data-test="team-leave-button"
                                         >
-                                            <LogOut class="h-4 w-4" />
+                                            <Logout class="h-4 w-4" />
                                         </Button>
                                     {/snippet}
                                 </TooltipTrigger>
@@ -134,22 +118,18 @@
                             <Tooltip>
                                 <TooltipTrigger>
                                     {#snippet child({ props })}
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            asChild
+                                        <Link
                                             {...props}
+                                            href={edit(team.slug)}
+                                            class={buttonVariants({
+                                                variant: 'ghost',
+                                                size: 'icon-sm',
+                                            })}
+                                            aria-label="View team"
+                                            data-test="team-view-button"
                                         >
-                                            {#snippet children(buttonProps)}
-                                                <Link
-                                                    {...buttonProps}
-                                                    href={edit(team.slug)}
-                                                    data-test="team-view-button"
-                                                >
-                                                    <Eye class="h-4 w-4" />
-                                                </Link>
-                                            {/snippet}
-                                        </Button>
+                                            <View class="size-4" />
+                                        </Link>
                                     {/snippet}
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -160,22 +140,18 @@
                             <Tooltip>
                                 <TooltipTrigger>
                                     {#snippet child({ props })}
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            asChild
+                                        <Link
                                             {...props}
+                                            href={edit(team.slug)}
+                                            class={buttonVariants({
+                                                variant: 'ghost',
+                                                size: 'icon-sm',
+                                            })}
+                                            aria-label="Edit team"
+                                            data-test="team-edit-button"
                                         >
-                                            {#snippet children(buttonProps)}
-                                                <Link
-                                                    {...buttonProps}
-                                                    href={edit(team.slug)}
-                                                    data-test="team-edit-button"
-                                                >
-                                                    <Pencil class="h-4 w-4" />
-                                                </Link>
-                                            {/snippet}
-                                        </Button>
+                                            <Edit class="size-4" />
+                                        </Link>
                                     {/snippet}
                                 </TooltipTrigger>
                                 <TooltipContent>

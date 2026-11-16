@@ -1,11 +1,13 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/svelte-starter-kit",
+    "name": "mostlywhat/itera",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Itera is a personal Agile planner for college students that can also be used for work and everyday life.",
     "keywords": [
-        "laravel",
-        "framework"
+        "itera",
+        "agile",
+        "planner",
+        "sprint"
     ],
     "license": "MIT",
     "require": {
@@ -48,8 +50,8 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
             "@php artisan migrate --force",
-            "npm install",
-            "npm run build"
+            "pnpm install",
+            "pnpm run build"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
@@ -63,8 +65,8 @@
         ],
         "ci:check": [
             "Composer\\Config::disableProcessTimeout",
-            "npm run check",
-            "npm run types:check",
+            "pnpm run check",
+            "pnpm run types:check",
             "@test"
         ],
         "types:check": [

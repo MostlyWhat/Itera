@@ -1,116 +1,46 @@
 # Itera
 
-Itera is a personal Agile planner for college students that can also be used for work and everyday life.
+Itera is a personal Agile planner for college students that can also be used for work and everyday life. Users organize their work as Areas, Projects, Tasks, and Subtasks, give tasks story points, and plan a Monday-to-Sunday sprint.
 
-## Deployment
+Live app: <https://itera.wasmer.app>
 
-Itera runs on [Wasmer Edge](https://docs.wasmer.io/edge/). GitHub Actions builds the application and deploys it with the Wasmer CLI.
+## Tech stack
 
-### Architecture
+- Laravel 13 (PHP 8.5), Fortify, Wayfinder
+- Inertia 3, Svelte 5, TypeScript
+- Tailwind CSS 4, shadcn-svelte, Vite+
+- PostgreSQL in production, SQLite for local development
+- Pest for tests, pnpm for JavaScript packages
+- Wasmer Edge for hosting, GitHub Actions for CI/CD
 
-- **Build:** GitHub Actions uses native PHP 8.5, Composer, Node.js 24, and npm.
-- **Package:** `scripts/wasmer/stage.sh` copies the runtime files into `deploy/`. The Wasmer package in `wasmer.toml` mounts `deploy/` at `/app`.
-- **Runtime:** The community WASIX package [`shira/php@8.5.10`](https://wasmer.io/shira/php) runs PHP's built-in web server. `deploy/router.php` serves static files and sends other requests to Laravel.
-- **Application:** `app.yaml` configures the Wasmer Edge app, the PostgreSQL database, and the health check.
-- **Migrations:** `scripts/wasmer/migrate.sh` runs `php artisan migrate --force` with native PHP in CI, one time before each deployment. It reads the database credentials from the Wasmer app secrets. The app never runs migrations when it starts.
+## Quick start
 
-### CI/CD
+### With Docker
 
-The `deploy` job in `.github/workflows/ci.yml` starts after the `ci` job passes. It runs only for a push to `main` or a manual run on `main`. It never runs for a pull request. One production deployment runs at a time.
-
-The job does these steps:
-
-1. Install the production Composer packages (`composer install --no-dev`).
-2. Run `composer run build:production` (package discovery and asset publishing).
-3. Run `npm ci` and `npm run build`. Wayfinder generates the routes during the build.
-4. Run `scripts/wasmer/stage.sh` to make the `deploy/` directory.
-5. Run `scripts/wasmer/migrate.sh`, then `wasmer deploy --non-interactive --publish-package --bump`, then check `/up`.
-
-The `--bump` flag sets the package version to the latest registry version plus one patch. Thus each run publishes a new version, although `wasmer.toml` keeps `0.1.0`.
-
-To skip jobs, put a marker in the commit message. For a push, GitHub reads only the last commit. For a pull request, put the marker in the title.
-
-| Marker          | Tests | Deploy          |
-| --------------- | ----- | --------------- |
-| `[skip ci]`     | No    | No              |
-| `[skip tests]`  | No    | Yes (on `main`) |
-| `[skip deploy]` | Yes   | No              |
-
-Example: `docs: fix typo in README [skip deploy]`. Use `[skip tests]` only for changes that cannot break the build.
-
-### GitHub secrets
-
-| Name           | Value                                                                                            |
-| -------------- | ------------------------------------------------------------------------------------------------ |
-| `WASMER_TOKEN` | A Wasmer API token from <https://wasmer.io/settings/access-tokens> for the `mostlywhat` account. |
-
-The workflow uses the `production` GitHub environment. GitHub makes it on the first run.
-
-### Wasmer settings
-
-`app.yaml` sets the non-secret production values: `APP_ENV=production`, `APP_DEBUG=false`, the HTTPS `APP_URL`, database sessions and cache, and the `sync` queue. Set the application key as a Wasmer secret. Never commit it.
+You need [Docker](https://docs.docker.com/get-docker/) only.
 
 ```bash
-php artisan key:generate --show
-wasmer app secret create APP_KEY "base64:..." --app mostlywhat/itera
+docker build -t itera-dev .
+docker run --rm -p 8000:8000 -p 5173:5173 itera-dev
 ```
 
-If Wasmer gives the app a different URL, change `APP_URL` in `app.yaml` and the URLs in the workflow.
+Then open <http://localhost:8000>. See [Development](docs/development.md#docker) for details.
 
-### PostgreSQL
+### On your computer
 
-`app.yaml` requests a managed PostgreSQL database (`capabilities.database.engine: postgres`). Wasmer gives these variables to the app: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, and `DB_PASSWORD`. Laravel uses `DB_DATABASE`, so `config/database.php` reads `DB_NAME` when `DB_DATABASE` is not set. `app.yaml` sets `DB_CONNECTION=pgsql`.
-
-### Email
-
-Itera sends email through [Resend](https://resend.com) with Laravel's `smtp` mailer. Email verification, password reset, and team invitations need it. `app.yaml` sets the host (`smtp.resend.com`), the port (`587`, STARTTLS), and the username (`resend`). Set the API key and the sender address as Wasmer secrets:
+You need PHP 8.5, Composer, Node.js 24, and pnpm.
 
 ```bash
-wasmer app secret create MAIL_PASSWORD "re_..." --app mostlywhat/itera
-wasmer app secret create MAIL_FROM_ADDRESS "no-reply@your-domain.example" --app mostlywhat/itera
+composer setup
+php artisan db:seed
+composer run dev
 ```
 
-The sender address must use a domain that you verified in Resend. Redeploy after you change a secret.
+Both ways add a local admin account. See [Development](docs/development.md#local-admin-account) for the login.
 
-### First deployment
+## Documentation
 
-The `itera` app already exists (`app_id` in `app.yaml`). For a new app, do these steps:
-
-1. Install the Wasmer CLI and run `wasmer login`.
-2. Build the application and run `bash scripts/wasmer/stage.sh` on Linux or in WSL.
-3. Run `wasmer deploy --publish-package --bump`. The CLI makes the app and writes `app_id` into `app.yaml`.
-4. Create the `APP_KEY` secret (see above). Run `bash scripts/wasmer/migrate.sh` from `deploy/`, then deploy again.
-5. Commit `app.yaml` with the `app_id`, and add `WASMER_TOKEN` to the GitHub secrets.
-
-### Manual redeploy
-
-Open **Actions > tests > Run workflow** on GitHub and select `main`. Or run `wasmer deploy --publish-package --bump` from a staged local copy.
-
-### Logs
-
-```bash
-wasmer app logs mostlywhat/itera
-wasmer app logs mostlywhat/itera --watch
-```
-
-The app sends Laravel logs to stderr (`LOG_CHANNEL=stderr`), so they show in these logs.
-
-### Rollback
-
-```bash
-wasmer app version list mostlywhat/itera
-wasmer app version activate <VERSION_ID>
-```
-
-A rollback does not undo migrations. Write migrations that work with the previous release.
-
-### Known limitations of the PHP runtime
-
-- `shira/php` is a community package, not an official Wasmer package. Pin the version and test each upgrade.
-- PHP's built-in web server handles one request at a time. `app.yaml` uses `scaling.mode: single_concurrency`, so Wasmer Edge adds instances for more traffic.
-- The local file system of an instance is not persistent. Keep sessions, cache, and data in PostgreSQL. Do not keep user uploads on the local disk.
-- The router moves Laravel storage to the temporary directory if the package storage is read-only.
-- There is no queue worker. Queued jobs run synchronously (`QUEUE_CONNECTION=sync`).
-- Wasmer CLI 7.5 reads a health check only in the YAML tag form (`- !http`). The CLI also rewrites `app.yaml` on each deploy.
-- A Wasmer `pre-deployment` job with `execute` did not run in tests, so CI runs the migrations. The database must accept connections from GitHub Actions.
-- `wasmer run` with this runtime does not work on Windows (`ProcessCputimeId` is not implemented). Test the package on Linux, in WSL, or in Docker.
+| Document                           | Contents                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------ |
+| [Development](docs/development.md) | Local setup, Docker, admin login, commands, commit hooks, commit markers |
+| [Deployment](docs/deployment.md)   | Wasmer Edge, CI/CD, secrets, database, email, logs, rollback             |

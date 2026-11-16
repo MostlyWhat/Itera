@@ -1,6 +1,6 @@
 <script lang="ts">
     import { router } from '@inertiajs/svelte';
-    import KeyRound from '@lucide/svelte/icons/key-round';
+    import Password from 'carbon-icons-svelte/lib/Password.svelte';
     import { destroy } from '@/actions/Laravel/Passkeys/Http/Controllers/PasskeyRegistrationController';
     import Heading from '@/components/Heading.svelte';
     import PasskeyItem from '@/components/PasskeyItem.svelte';
@@ -44,7 +44,7 @@
                     <div
                         class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted"
                     >
-                        <KeyRound class="h-7 w-7 text-muted-foreground" />
+                        <Password class="h-7 w-7 text-muted-foreground" />
                     </div>
                     <p class="font-medium">No passkeys yet</p>
                     <p class="mt-1 text-sm text-muted-foreground">

@@ -1,9 +1,9 @@
 <script lang="ts">
     import { Form } from '@inertiajs/svelte';
-    import Eye from '@lucide/svelte/icons/eye';
-    import EyeOff from '@lucide/svelte/icons/eye-off';
-    import LockKeyhole from '@lucide/svelte/icons/lock-keyhole';
-    import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+    import View from 'carbon-icons-svelte/lib/View.svelte';
+    import ViewOff from 'carbon-icons-svelte/lib/ViewOff.svelte';
+    import Locked from 'carbon-icons-svelte/lib/Locked.svelte';
+    import Renew from 'carbon-icons-svelte/lib/Renew.svelte';
     import { onMount, tick } from 'svelte';
     import AlertError from '@/components/AlertError.svelte';
     import { Button } from '@/components/ui/button';
@@ -47,7 +47,7 @@
 <Card class="w-full">
     <CardHeader>
         <CardTitle class="flex gap-3">
-            <LockKeyhole class="size-4" />2FA recovery codes
+            <Locked class="size-4" />2FA recovery codes
         </CardTitle>
         <CardDescription>
             Recovery codes let you regain access if you lose your 2FA device.
@@ -60,9 +60,9 @@
         >
             <Button onclick={toggleRecoveryCodesVisibility} class="w-fit">
                 {#if isRecoveryCodesVisible}
-                    <EyeOff class="size-4" />
+                    <ViewOff class="size-4" />
                 {:else}
-                    <Eye class="size-4" />
+                    <View class="size-4" />
                 {/if}
                 {isRecoveryCodesVisible ? 'Hide' : 'View'} recovery codes
             </Button>
@@ -79,7 +79,7 @@
                             type="submit"
                             disabled={processing}
                         >
-                            <RefreshCw class="size-4" /> Regenerate codes
+                            <Renew class="size-4" /> Regenerate codes
                         </Button>
                     {/snippet}
                 </Form>

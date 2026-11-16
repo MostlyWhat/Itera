@@ -16,10 +16,8 @@
     import { Label } from '@/components/ui/label';
     import { store } from '@/routes/teams';
 
-    type TriggerProps = {
-        onClick?: (event: MouseEvent) => void;
-        [key: string]: unknown;
-    };
+    // Props from the dialog trigger. Spread them on the trigger element.
+    type TriggerProps = Record<string, unknown>;
 
     let {
         children: trigger,
@@ -40,8 +38,8 @@
 </script>
 
 <Dialog {open} onOpenChange={handleOpenChange}>
-    <DialogTrigger asChild>
-        {#snippet children(props)}
+    <DialogTrigger>
+        {#snippet child({ props })}
             {@render trigger?.(props)}
         {/snippet}
     </DialogTrigger>
@@ -73,11 +71,11 @@
                     </div>
 
                     <DialogFooter class="gap-2">
-                        <DialogClose asChild>
-                            {#snippet children(props)}
+                        <DialogClose>
+                            {#snippet child({ props })}
                                 <Button
+                                    {...props}
                                     variant="secondary"
-                                    onclick={props.onClick}
                                 >
                                     Cancel
                                 </Button>

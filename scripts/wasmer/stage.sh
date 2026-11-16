@@ -3,7 +3,7 @@
 # Copy the built Laravel application into ./deploy for the Wasmer package.
 #
 # Run this script from the repository root after these commands:
-#   composer install --no-dev, composer run build:production, npm run build
+#   composer install --no-dev, composer run build:production, pnpm run build
 #
 # The script copies only the files that Laravel needs at runtime.
 # It never copies .env files, tests, node_modules, logs, or SQLite databases.

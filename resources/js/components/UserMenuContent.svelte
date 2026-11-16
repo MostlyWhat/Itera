@@ -1,7 +1,8 @@
 <script lang="ts">
     import { Link, router } from '@inertiajs/svelte';
-    import LogOut from '@lucide/svelte/icons/log-out';
-    import Settings from '@lucide/svelte/icons/settings';
+    import Logout from 'carbon-icons-svelte/lib/Logout.svelte';
+    import Settings from 'carbon-icons-svelte/lib/Settings.svelte';
+    import { mergeProps } from 'bits-ui';
     import {
         DropdownMenuGroup,
         DropdownMenuItem,
@@ -20,11 +21,8 @@
         user: User;
     } = $props();
 
-    function handleLogout(propsOnClick?: () => void) {
-        return () => {
-            propsOnClick?.();
-            router.flushAll();
-        };
+    function handleLogout() {
+        router.flushAll();
     }
 </script>
 
@@ -35,31 +33,29 @@
 </DropdownMenuLabel>
 <DropdownMenuSeparator />
 <DropdownMenuGroup>
-    <DropdownMenuItem asChild>
-        {#snippet children(props)}
+    <DropdownMenuItem>
+        {#snippet child({ props })}
             <Link
-                class={props.class}
+                {...props}
                 href={toUrl(edit())}
                 prefetch
-                onclick={props.onClick}
             >
-                <Settings class="mr-2 h-4 w-4" />
+                <Settings />
                 Settings
             </Link>
         {/snippet}
     </DropdownMenuItem>
 </DropdownMenuGroup>
 <DropdownMenuSeparator />
-<DropdownMenuItem asChild>
-    {#snippet children(props)}
+<DropdownMenuItem>
+    {#snippet child({ props })}
         <Link
-            class={props.class}
+            {...mergeProps(props, { onclick: handleLogout, class: 'w-full' })}
             href={logout()}
             as="button"
-            onclick={handleLogout(props.onClick)}
             data-test="logout-button"
         >
-            <LogOut class="mr-2 h-4 w-4" />
+            <Logout />
             Log out
         </Link>
     {/snippet}

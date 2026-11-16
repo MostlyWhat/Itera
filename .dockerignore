@@ -1,0 +1,49 @@
+# Dependencies. Docker runs on Linux, so the image installs its own copies.
+node_modules
+vendor
+
+# Secrets and local data. The image makes its own .env and SQLite database.
+.env
+.env.*
+!.env.example
+database/*.sqlite
+database/*.sqlite-journal
+auth.json
+
+# Build output and the dev server file from the host. A host public/hot file
+# would point the container at the Vite server on the host.
+public/build
+public/hot
+public/storage
+public/fonts-manifest.dev.json
+bootstrap/ssr
+deploy
+
+# Logs, caches, and compiled files
+storage/logs/*.log
+storage/framework/cache/data/*
+!storage/framework/cache/data/.gitignore
+storage/framework/sessions/*
+!storage/framework/sessions/.gitignore
+storage/framework/views/*
+!storage/framework/views/.gitignore
+storage/pail
+bootstrap/cache/*.php
+.phpunit.cache
+.phpunit.result.cache
+
+# Git, editors, and local tool folders
+.git
+.idea
+.vscode
+.zed
+.fleet
+.nova
+.agents
+.claude
+.codex
+.cursor
+.junie
+.impeccable
+.ruv-swarm
+docs/ui

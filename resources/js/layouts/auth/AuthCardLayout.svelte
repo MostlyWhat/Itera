@@ -32,7 +32,7 @@
         >
             <div class="flex h-9 w-9 items-center justify-center">
                 <AppLogoIcon
-                    class="size-9 fill-current text-black dark:text-white"
+                    class="size-9 text-primary"
                 />
             </div>
         </Link>
@@ -40,7 +40,7 @@
         <div class="flex flex-col gap-6">
             <Card class="rounded-xl">
                 <CardHeader class="px-10 pt-8 pb-0 text-center">
-                    <CardTitle class="text-xl">{title}</CardTitle>
+                    <CardTitle class="type-title">{title}</CardTitle>
                     <CardDescription>
                         {description}
                     </CardDescription>

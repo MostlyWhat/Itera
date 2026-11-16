@@ -3,7 +3,6 @@ import { wayfinder } from '@laravel/vite-plugin-wayfinder';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
 import laravel from 'laravel-vite-plugin';
-import { bunny } from 'laravel-vite-plugin/fonts';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 
 const isSvelteCheck = process.argv.some((argument) =>
@@ -19,11 +18,6 @@ export default defineConfig({
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.ts'],
             refresh: true,
-            fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
-                }),
-            ],
         }),
         inertia(),
         tailwindcss(),
@@ -33,6 +27,9 @@ export default defineConfig({
         }),
     ]),
     server: {
+        // Herd names the dev host after the folder ("Itera.test"). The browser
+        // sends "itera.test", and the hot-reload websocket compares hosts by case.
+        allowedHosts: ['.test'],
         watch: {
             ignored: [
                 '**/.agents/**',
@@ -79,6 +76,8 @@ export default defineConfig({
             'composer.json',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
+            // Vendored from shadcn-svelte. Keep it as published.
+            'resources/css/typeset.css',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],

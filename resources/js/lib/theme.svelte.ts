@@ -115,3 +115,8 @@ export function themeState(): ThemeState {
         updateAppearance,
     };
 }
+
+/** The stored appearance ('light', 'dark', or 'system'). Reactive. */
+export function currentAppearance(): Appearance {
+    return appearance.value;
+}

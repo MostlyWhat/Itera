@@ -1,7 +1,8 @@
 <script lang="ts">
-    import { Link, page } from '@inertiajs/svelte';
+    import { Link } from '@inertiajs/svelte';
     import type { Snippet } from 'svelte';
     import AppLogoIcon from '@/components/AppLogoIcon.svelte';
+    import AppWordmark from '@/components/AppWordmark.svelte';
     import { home } from '@/routes';
 
     let {
@@ -14,22 +15,21 @@
         children?: Snippet;
     } = $props();
 
-    const name = $derived(page.props.name);
 </script>
 
 <div
     class="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0"
 >
     <div
-        class="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r"
+        class="relative hidden h-full flex-col bg-primary p-10 text-primary-foreground lg:flex dark:border-r"
     >
-        <div class="absolute inset-0 bg-zinc-900"></div>
+        
         <Link
             href={home()}
             class="relative z-20 flex items-center text-lg font-medium"
         >
-            <AppLogoIcon class="mr-2 size-8 fill-current text-white" />
-            {name}
+            <AppLogoIcon class="mr-2 size-8" />
+            <AppWordmark class="h-[1.125rem]" />
         </Link>
     </div>
     <div class="lg:p-8">
@@ -38,7 +38,7 @@
         >
             <div class="flex flex-col space-y-2 text-center">
                 {#if title}
-                    <h1 class="text-xl font-medium tracking-tight">{title}</h1>
+                    <h1 class="type-title">{title}</h1>
                 {/if}
                 {#if description}
                     <p class="text-sm text-muted-foreground">{description}</p>

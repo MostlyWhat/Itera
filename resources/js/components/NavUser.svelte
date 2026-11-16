@@ -1,6 +1,6 @@
 <script lang="ts">
     import { page } from '@inertiajs/svelte';
-    import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
+    import ChevronSort from 'carbon-icons-svelte/lib/ChevronSort.svelte';
     import {
         DropdownMenu,
         DropdownMenuContent,
@@ -18,30 +18,28 @@
 
     const user = $derived(page.props.auth.user);
     const currentTeam = $derived(page.props.currentTeam as Team | null);
-    const { isMobile, state: sidebarState } = useSidebar();
+    const sidebar = useSidebar();
 </script>
 
 <SidebarMenu>
     <SidebarMenuItem>
-        <DropdownMenu class="w-full">
-            <DropdownMenuTrigger asChild>
-                {#snippet children(props)}
+        <DropdownMenu>
+            <DropdownMenuTrigger>
+                {#snippet child({ props })}
                     <SidebarMenuButton
+                        {...props}
                         size="lg"
                         class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                         data-test="sidebar-menu-button"
-                        onclick={props.onclick}
-                        aria-expanded={props['aria-expanded']}
-                        data-state={props['data-state']}
                     >
                         <UserInfo {user} team={currentTeam} />
-                        <ChevronsUpDown class="ml-auto size-4" />
+                        <ChevronSort class="ml-auto size-4" />
                     </SidebarMenuButton>
                 {/snippet}
             </DropdownMenuTrigger>
             <DropdownMenuContent
                 class="w-full min-w-0 rounded-lg"
-                side={$sidebarState === 'collapsed' && !$isMobile
+                side={sidebar.state === 'collapsed' && !sidebar.isMobile
                     ? 'left'
                     : 'top'}
                 align="end"
