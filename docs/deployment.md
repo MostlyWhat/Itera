@@ -31,7 +31,8 @@ The job does these steps:
 2. Run `composer run build:production` (package discovery and asset publishing).
 3. Run `pnpm install --frozen-lockfile` and `pnpm run build`. Wayfinder generates the routes during the build.
 4. Run `scripts/wasmer/stage.sh` to make the `deploy/` directory.
-5. Run `scripts/wasmer/migrate.sh`, then `wasmer deploy --non-interactive --publish-package --bump`, then check `/up`.
+5. Run `scripts/wasmer/migrate.sh`, then `wasmer deploy --non-interactive --publish-package --bump --no-wait`.
+6. Run `scripts/wasmer/wait-for-deploy.sh`. It waits until `https://itera.wasmer.app/up` returns 200 from the new version. The CLI does not wait itself, because its check on the custom domain goes through Cloudflare and times out from the GitHub runner.
 
 The `--bump` flag sets the package version to the latest registry version plus one patch. Thus each run publishes a new version, although `wasmer.toml` keeps `0.1.0`.
 
@@ -83,7 +84,7 @@ The `itera` app already exists (`app_id` in `app.yaml`). For a new app, do these
 
 ## Manual redeploy
 
-Open **Actions > tests > Run workflow** on GitHub and select `main`. Or run `wasmer deploy --publish-package --bump` from a staged local copy.
+Open **Actions > Deploy > Run workflow** on GitHub and select `main`. Or run `wasmer deploy --publish-package --bump` from a staged local copy.
 
 ## Logs
 

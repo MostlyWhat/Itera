@@ -108,10 +108,18 @@ jobs:
 
       # The CLI reads the token from WASMER_TOKEN. --bump sets the package version
       # to the latest registry version plus one patch, so each run can publish.
+      # Record the live version, so the check below can see the new one.
+      - name: Record the live version
+        id: live
+        run: echo "version=$(bash scripts/wasmer/wait-for-deploy.sh record)" >> "$GITHUB_OUTPUT"
+
+      # --no-wait: the CLI waits on the custom domain, which goes through
+      # Cloudflare and times out from the runner. The next step checks the
+      # wasmer.app domain instead.
       - name: Deploy to Wasmer Edge
         env:
           WASMER_TOKEN: ${{ secrets.WASMER_TOKEN }}
-        run: wasmer deploy --non-interactive --publish-package --bump
+        run: wasmer deploy --non-interactive --publish-package --bump --no-wait
 
       - name: Check the deployed application
-        run: curl --fail --silent --show-error --retry 5 --retry-delay 10 --retry-all-errors https://itera.wasmer.app/up
+        run: bash scripts/wasmer/wait-for-deploy.sh wait "${{ steps.live.outputs.version }}"
