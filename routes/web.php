@@ -5,6 +5,7 @@ use App\Http\Controllers\Areas\ProjectController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Sprints\SprintController;
 use App\Http\Controllers\Tasks\TaskController;
+use App\Http\Controllers\Tasks\TaskStatusController;
 use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Middleware\EnsureTeamMembership;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +42,9 @@ Route::prefix('{current_team}')
         Route::get('sprints/{sprint}', [SprintController::class, 'show'])->name('sprints.show');
         Route::patch('sprints/{sprint}', [SprintController::class, 'update'])->name('sprints.update');
         Route::post('sprints/{sprint}/tasks', [SprintController::class, 'addTask'])->name('sprints.tasks.store');
+
+        // Kanban board on the dashboard (ITERA-05)
+        Route::patch('tasks/{task}/status', TaskStatusController::class)->name('tasks.status.update');
     });
 
 Route::middleware(['auth'])->group(function () {

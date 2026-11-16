@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\TeamInvitation;
+use App\Queries\CurrentSprintBoard;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, CurrentSprintBoard $board): Response
     {
         $email = strtolower($request->user()->email);
 
@@ -33,6 +34,7 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'pendingInvitations' => $pendingInvitations,
+            'board' => $board->for($request->user()->currentTeam),
         ]);
     }
 }
