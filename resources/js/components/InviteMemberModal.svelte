@@ -81,7 +81,7 @@
 
                         <div class="grid gap-2">
                             <Label for="role">Role</Label>
-                            <Select bind:value={inviteRole}>
+                            <Select type="single" bind:value={inviteRole}>
                                 <SelectTrigger
                                     class="w-full"
                                     data-test="invite-role"

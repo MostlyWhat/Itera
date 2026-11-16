@@ -18,10 +18,10 @@
 
 <script lang="ts">
     import { Form, router } from '@inertiajs/svelte';
-    import ChevronDown from '@lucide/svelte/icons/chevron-down';
-    import Mail from '@lucide/svelte/icons/mail';
-    import UserPlus from '@lucide/svelte/icons/user-plus';
-    import X from '@lucide/svelte/icons/x';
+    import ChevronDown from 'carbon-icons-svelte/lib/ChevronDown.svelte';
+    import Email from 'carbon-icons-svelte/lib/Email.svelte';
+    import UserFollow from 'carbon-icons-svelte/lib/UserFollow.svelte';
+    import Close from 'carbon-icons-svelte/lib/Close.svelte';
     import AppHead from '@/components/AppHead.svelte';
     import CancelInvitationModal from '@/components/CancelInvitationModal.svelte';
     import DeleteTeamModal from '@/components/DeleteTeamModal.svelte';
@@ -101,12 +101,6 @@
         invitationToCancel = invitation;
         cancelInvitationDialogOpen = true;
     };
-
-    const callClickHandler = (handler: unknown, event: MouseEvent) => {
-        if (typeof handler === 'function') {
-            handler(event);
-        }
-    };
 </script>
 
 <AppHead title={pageTitle} />
@@ -165,7 +159,7 @@
                     onclick={() => (inviteDialogOpen = true)}
                     data-test="invite-member-button"
                 >
-                    <UserPlus class="h-4 w-4" /> Invite member
+                    <UserFollow class="h-4 w-4" /> Invite member
                 </Button>
             {/if}
         </div>
@@ -200,16 +194,12 @@
                     <div class="flex items-center gap-2">
                         {#if member.role !== 'owner' && permissions.canUpdateMember}
                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    {#snippet children(props)}
+                                <DropdownMenuTrigger>
+                                    {#snippet child({ props })}
                                         <Button
+                                            {...props}
                                             variant="outline"
                                             size="sm"
-                                            onclick={props.onclick}
-                                            aria-expanded={props[
-                                                'aria-expanded'
-                                            ]}
-                                            data-state={props['data-state']}
                                             data-test="member-role-trigger"
                                         >
                                             {member.role_label}
@@ -221,23 +211,15 @@
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
                                     {#each availableRoles as role (role.value)}
-                                        <DropdownMenuItem asChild>
-                                            {#snippet children(props)}
-                                                <button
-                                                    type="button"
-                                                    class={props.class}
-                                                    data-test="member-role-option"
-                                                    onclick={() => {
-                                                        props.onClick?.();
-                                                        updateMemberRole(
-                                                            member,
-                                                            role.value,
-                                                        );
-                                                    }}
-                                                >
-                                                    {role.label}
-                                                </button>
-                                            {/snippet}
+                                        <DropdownMenuItem
+                                            data-test="member-role-option"
+                                            onSelect={() =>
+                                                updateMemberRole(
+                                                    member,
+                                                    role.value,
+                                                )}
+                                        >
+                                            {role.label}
                                         </DropdownMenuItem>
                                     {/each}
                                 </DropdownMenuContent>
@@ -258,15 +240,11 @@
                                                 size="sm"
                                                 {...props}
                                                 data-test="member-remove-button"
-                                                onclick={(event) => {
-                                                    callClickHandler(
-                                                        props.onClick,
-                                                        event,
-                                                    );
-                                                    confirmRemoveMember(member);
-                                                }}
+                                                aria-label="Remove member"
+                                                onclick={() =>
+                                                    confirmRemoveMember(member)}
                                             >
-                                                <X class="h-4 w-4" />
+                                                <Close class="h-4 w-4" />
                                             </Button>
                                         {/snippet}
                                     </TooltipTrigger>
@@ -300,7 +278,7 @@
                             <div
                                 class="flex h-10 w-10 items-center justify-center rounded-full bg-muted"
                             >
-                                <Mail class="h-5 w-5 text-muted-foreground" />
+                                <Email class="h-5 w-5 text-muted-foreground" />
                             </div>
                             <div>
                                 <div class="font-medium">
@@ -322,17 +300,13 @@
                                                 size="sm"
                                                 {...props}
                                                 data-test="invitation-cancel-button"
-                                                onclick={(event) => {
-                                                    callClickHandler(
-                                                        props.onClick,
-                                                        event,
-                                                    );
+                                                aria-label="Cancel invitation"
+                                                onclick={() =>
                                                     confirmCancelInvitation(
                                                         invitation,
-                                                    );
-                                                }}
+                                                    )}
                                             >
-                                                <X class="h-4 w-4" />
+                                                <Close class="h-4 w-4" />
                                             </Button>
                                         {/snippet}
                                     </TooltipTrigger>

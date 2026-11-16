@@ -1,6 +1,6 @@
 <script lang="ts">
-    import KeyRound from '@lucide/svelte/icons/key-round';
-    import Trash2 from '@lucide/svelte/icons/trash-2';
+    import Password from 'carbon-icons-svelte/lib/Password.svelte';
+    import TrashCan from 'carbon-icons-svelte/lib/TrashCan.svelte';
     import { Button } from '@/components/ui/button';
     import {
         Dialog,
@@ -36,7 +36,7 @@
         <div
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted"
         >
-            <KeyRound class="h-5 w-5 text-muted-foreground" />
+            <Password class="h-5 w-5 text-muted-foreground" />
         </div>
         <div class="space-y-1">
             <div class="flex items-center gap-2.5">
@@ -60,15 +60,15 @@
     </div>
 
     <Dialog>
-        <DialogTrigger asChild>
-            {#snippet children(props)}
+        <DialogTrigger>
+            {#snippet child({ props })}
                 <Button
+                    {...props}
                     variant="ghost"
                     size="sm"
                     class="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    onclick={props.onClick}
                 >
-                    <Trash2 class="h-4 w-4" />
+                    <TrashCan class="h-4 w-4" />
                     <span class="sr-only">Remove</span>
                 </Button>
             {/snippet}
@@ -81,9 +81,9 @@
                 You will no longer be able to use it to sign in.
             </DialogDescription>
             <DialogFooter>
-                <DialogClose asChild>
-                    {#snippet children(props)}
-                        <Button variant="secondary" onclick={props.onClick}>
+                <DialogClose>
+                    {#snippet child({ props })}
+                        <Button {...props} variant="secondary">
                             Cancel
                         </Button>
                     {/snippet}

@@ -1,10 +1,10 @@
 <script lang="ts">
     import { Link, page } from '@inertiajs/svelte';
-    import BookOpen from '@lucide/svelte/icons/book-open';
-    import Folder from '@lucide/svelte/icons/folder';
-    import LayoutGrid from '@lucide/svelte/icons/layout-grid';
-    import Menu from '@lucide/svelte/icons/menu';
-    import Search from '@lucide/svelte/icons/search';
+    import Book from 'carbon-icons-svelte/lib/Book.svelte';
+    import LogoGithub from 'carbon-icons-svelte/lib/LogoGithub.svelte';
+    import Grid from 'carbon-icons-svelte/lib/Grid.svelte';
+    import Menu from 'carbon-icons-svelte/lib/Menu.svelte';
+    import Search from 'carbon-icons-svelte/lib/Search.svelte';
     import AppLogo from '@/components/AppLogo.svelte';
     import AppLogoIcon from '@/components/AppLogoIcon.svelte';
     import Breadcrumbs from '@/components/Breadcrumbs.svelte';
@@ -67,20 +67,20 @@
         {
             title: 'Dashboard',
             href: dashboardUrl,
-            icon: LayoutGrid,
+            icon: Grid,
         },
     ]);
 
     const rightNavItems: NavItem[] = [
         {
             title: 'Repository',
-            href: 'https://github.com/laravel/svelte-starter-kit',
-            icon: Folder,
+            href: 'https://github.com/MostlyWhat/Itera',
+            icon: LogoGithub,
         },
         {
             title: 'Documentation',
-            href: 'https://laravel.com/docs/starter-kits#svelte',
-            icon: BookOpen,
+            href: 'https://github.com/MostlyWhat/Itera#readme',
+            icon: Book,
         },
     ];
 </script>
@@ -90,14 +90,13 @@
         <div class="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
             <div class="lg:hidden">
                 <Sheet>
-                    <SheetTrigger asChild>
-                        {#snippet children(props)}
+                    <SheetTrigger>
+                        {#snippet child({ props })}
                             <Button
+                                {...props}
                                 variant="ghost"
                                 size="icon"
                                 class="mr-2 h-9 w-9"
-                                onclick={props.onclick}
-                                aria-expanded={props['aria-expanded']}
                             >
                                 <Menu class="h-5 w-5" />
                             </Button>
@@ -125,7 +124,8 @@
                                         ) ?? ''}"
                                     >
                                         {#if item.icon}
-                                            <item.icon class="h-5 w-5" />
+                                            {@const Icon = item.icon}
+                                            <Icon class="h-5 w-5" />
                                         {/if}
                                         {item.title}
                                     </Link>
@@ -140,7 +140,8 @@
                                         class="flex items-center space-x-2 text-sm font-medium"
                                     >
                                         {#if item.icon}
-                                            <item.icon class="h-5 w-5" />
+                                            {@const Icon = item.icon}
+                                            <Icon class="h-5 w-5" />
                                         {/if}
                                         <span>{item.title}</span>
                                     </a>
@@ -174,7 +175,8 @@
                                     href={toUrl(item.href)}
                                 >
                                     {#if item.icon}
-                                        <item.icon class="mr-2 h-4 w-4" />
+                                        {@const Icon = item.icon}
+                                        <Icon class="mr-2 h-4 w-4" />
                                     {/if}
                                     {item.title}
                                 </Link>
@@ -203,6 +205,7 @@
 
                     <div class="hidden space-x-1 lg:flex">
                         {#each rightNavItems as item (toUrl(item.href))}
+                            {@const Icon = item.icon}
                             <TooltipProvider delayDuration={0}>
                                 <Tooltip>
                                     <TooltipTrigger>
@@ -217,7 +220,7 @@
                                                 <span class="sr-only"
                                                     >{item.title}</span
                                                 >
-                                                <item.icon
+                                                <Icon
                                                     class="size-5 opacity-80 group-hover:opacity-100"
                                                 />
                                             </a>
@@ -233,15 +236,13 @@
                 </div>
 
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        {#snippet children(props)}
+                    <DropdownMenuTrigger>
+                        {#snippet child({ props })}
                             <Button
+                                {...props}
                                 variant="ghost"
                                 size="icon"
                                 class="relative size-10 w-auto rounded-full p-1 focus-within:ring-2 focus-within:ring-primary"
-                                onclick={props.onclick}
-                                aria-expanded={props['aria-expanded']}
-                                data-state={props['data-state']}
                             >
                                 <Avatar
                                     class="size-8 overflow-hidden rounded-full"

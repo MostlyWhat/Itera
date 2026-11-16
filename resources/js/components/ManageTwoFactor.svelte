@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Form } from '@inertiajs/svelte';
-    import ShieldCheck from '@lucide/svelte/icons/shield-check';
+    import Security from 'carbon-icons-svelte/lib/Security.svelte';
     import { onDestroy } from 'svelte';
     import Heading from '@/components/Heading.svelte';
     import TwoFactorRecoveryCodes from '@/components/TwoFactorRecoveryCodes.svelte';
@@ -46,7 +46,7 @@
                 <div>
                     {#if twoFactorAuth.hasSetupData()}
                         <Button onclick={() => (showSetupModal = true)}>
-                            <ShieldCheck class="size-4" />Continue setup
+                            <Security class="size-4" />Continue setup
                         </Button>
                     {:else}
                         <Form

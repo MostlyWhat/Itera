@@ -38,7 +38,7 @@
         >
             <div class="flex flex-col space-y-2 text-center">
                 {#if title}
-                    <h1 class="text-xl font-medium tracking-tight">{title}</h1>
+                    <h1 class="type-title">{title}</h1>
                 {/if}
                 {#if description}
                     <p class="text-sm text-muted-foreground">{description}</p>

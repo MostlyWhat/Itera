@@ -2,6 +2,10 @@
 
 @import 'tw-animate-css';
 
+@import 'shadcn-svelte/tailwind.css';
+
+@import './typeset.css';
+
 @font-face {
     font-family: 'Instrument Sans';
     src: url('../fonts/InstrumentSans-Variable.ttf') format('truetype');
@@ -28,10 +32,17 @@
         'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
+    --font-heading: var(--font-sans);
+    --font-mono:
+        ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
 
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
-    --radius-md: calc(var(--radius) - 2px);
-    --radius-sm: calc(var(--radius) - 4px);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -77,75 +88,121 @@
     --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/*
+ * Itera theme: the Laravel website system (warm off-white ground, warm
+ * near-black ink, hairline borders, small radii) with cobalt blue as the
+ * brand color in place of Laravel red. Rules: docs/ui/DESIGN.md (local).
+ */
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    --radius: 0.5rem;
+
+    --background: oklch(0.994 0.001 106.4);
+    --foreground: oklch(0.221 0.006 106.9);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: oklch(0.221 0.006 106.9);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.87 0 0);
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.87 0 0);
+    --popover-foreground: oklch(0.221 0.006 106.9);
+
+    --primary: oklch(0.428 0.172 259.7);
+    --primary-foreground: oklch(0.985 0.004 260);
+    --secondary: oklch(0.97 0.003 106.4);
+    --secondary-foreground: oklch(0.221 0.006 106.9);
+    --muted: oklch(0.97 0.003 106.4);
+    --muted-foreground: oklch(0.542 0.005 91.5);
+    --accent: oklch(0.955 0.018 261.3);
+    --accent-foreground: oklch(0.37 0.15 260);
+    --destructive: oklch(0.577 0.215 27.3);
+    --destructive-foreground: oklch(0.577 0.215 27.3);
+
+    --border: oklch(0.915 0.004 106.5);
+    --input: oklch(0.88 0.005 106.5);
+    --ring: oklch(0.428 0.172 259.7);
+
+    --chart-1: oklch(0.428 0.172 259.7);
+    --chart-2: oklch(0.604 0.177 259.8);
+    --chart-3: oklch(0.78 0.1 256);
+    --chart-4: oklch(0.769 0.16 70);
+    --chart-5: oklch(0.542 0.005 91.5);
+
+    --sidebar: oklch(0.985 0.002 106.4);
+    --sidebar-foreground: oklch(0.221 0.006 106.9);
+    --sidebar-primary: oklch(0.428 0.172 259.7);
+    --sidebar-primary-foreground: oklch(0.985 0.004 260);
+    --sidebar-accent: oklch(0.955 0.018 261.3);
+    --sidebar-accent-foreground: oklch(0.37 0.15 260);
+    --sidebar-border: oklch(0.915 0.004 106.5);
+    --sidebar-ring: oklch(0.428 0.172 259.7);
 }
 
 .dark {
     --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.145 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.145 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.985 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.396 0.141 25.723);
-    --destructive-foreground: oklch(0.637 0.237 25.331);
-    --border: oklch(0.269 0 0);
-    --input: oklch(0.269 0 0);
-    --ring: oklch(0.439 0 0);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.985 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(0.269 0 0);
-    --sidebar-ring: oklch(0.439 0 0);
+    --foreground: oklch(0.946 0.001 106.4);
+    --card: oklch(0.2 0.002 106.6);
+    --card-foreground: oklch(0.946 0.001 106.4);
+    --popover: oklch(0.2 0.002 106.6);
+    --popover-foreground: oklch(0.946 0.001 106.4);
+
+    --primary: oklch(0.55 0.18 260);
+    --primary-foreground: oklch(0.985 0.004 260);
+    --secondary: oklch(0.25 0.004 106.6);
+    --secondary-foreground: oklch(0.946 0.001 106.4);
+    --muted: oklch(0.25 0.004 106.6);
+    --muted-foreground: oklch(0.705 0.009 98.9);
+    --accent: oklch(0.28 0.06 260);
+    --accent-foreground: oklch(0.92 0.03 260);
+    --destructive: oklch(0.704 0.191 22.2);
+    --destructive-foreground: oklch(0.704 0.191 22.2);
+
+    --border: oklch(0.3 0.006 106.7);
+    --input: oklch(0.362 0.007 106.7);
+    --ring: oklch(0.604 0.177 259.8);
+
+    --chart-1: oklch(0.604 0.177 259.8);
+    --chart-2: oklch(0.75 0.12 256);
+    --chart-3: oklch(0.45 0.16 260);
+    --chart-4: oklch(0.8 0.15 75);
+    --chart-5: oklch(0.705 0.009 98.9);
+
+    --sidebar: oklch(0.175 0.001 106.6);
+    --sidebar-foreground: oklch(0.946 0.001 106.4);
+    --sidebar-primary: oklch(0.604 0.177 259.8);
+    --sidebar-primary-foreground: oklch(0.985 0.004 260);
+    --sidebar-accent: oklch(0.28 0.06 260);
+    --sidebar-accent-foreground: oklch(0.92 0.03 260);
+    --sidebar-border: oklch(0.3 0.006 106.7);
+    --sidebar-ring: oklch(0.604 0.177 259.8);
+}
+
+/*
+ * UI headings. Same weight and ratios as the typeset headings, so app
+ * screens and rich text share one scale.
+ */
+@utility type-title {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    line-height: 1.4;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+}
+
+@utility type-section {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    line-height: 1.5;
+    font-weight: 600;
+}
+
+/* Rich text (task notes, retrospectives) uses shadcn-svelte typeset. */
+@layer components {
+    .typeset-itera {
+        --typeset-font-body: var(--font-sans);
+        --typeset-font-heading: var(--font-heading);
+        --typeset-font-mono: var(--font-mono);
+        --typeset-size: 15px;
+        --typeset-leading: 1.7;
+        --typeset-flow: 1.2em;
+    }
 }
 
 @layer base {
@@ -155,9 +212,20 @@
 
     html {
         font-feature-settings: 'ss02' 1;
+        caret-color: var(--primary);
+        scrollbar-color: var(--input) transparent;
     }
 
     body {
-        @apply bg-background text-foreground;
+        @apply bg-background text-foreground antialiased;
+    }
+
+    ::selection {
+        background-color: var(--accent);
+        color: var(--accent-foreground);
+    }
+
+    [dir='rtl'] .cn-rtl-flip {
+        transform: scaleX(-1);
     }
 }

@@ -1,8 +1,8 @@
 <script lang="ts">
     import { Form } from '@inertiajs/svelte';
-    import Check from '@lucide/svelte/icons/check';
-    import Copy from '@lucide/svelte/icons/copy';
-    import ScanLine from '@lucide/svelte/icons/scan-line';
+    import Checkmark from 'carbon-icons-svelte/lib/Checkmark.svelte';
+    import Copy from 'carbon-icons-svelte/lib/Copy.svelte';
+    import QrCode from 'carbon-icons-svelte/lib/QrCode.svelte';
     import { tick } from 'svelte';
     import AlertError from '@/components/AlertError.svelte';
     import InputError from '@/components/InputError.svelte';
@@ -143,7 +143,7 @@
                             ></div>
                         {/each}
                     </div>
-                    <ScanLine class="relative z-20 size-6 text-foreground" />
+                    <QrCode class="relative z-20 size-6 text-foreground" />
                 </div>
             </div>
             <div class="my-3 space-y-1 text-center">
@@ -239,7 +239,7 @@
                                     class="relative block h-auto border-l border-border px-3 hover:bg-muted"
                                 >
                                     {#if copied}
-                                        <Check class="w-4 text-green-500" />
+                                        <Checkmark class="w-4 text-green-500" />
                                     {:else}
                                         <Copy class="w-4" />
                                     {/if}
@@ -271,11 +271,13 @@
                                     disabled={processing}
                                     autofocus
                                 >
-                                    <InputOTPGroup>
-                                        {#each { length: 6 } as _, i (i)}
-                                            <InputOTPSlot index={i} />
-                                        {/each}
-                                    </InputOTPGroup>
+                                    {#snippet children({ cells })}
+                                        <InputOTPGroup>
+                                            {#each cells as cell, i (i)}
+                                                <InputOTPSlot {cell} />
+                                            {/each}
+                                        </InputOTPGroup>
+                                    {/snippet}
                                 </InputOTP>
                                 <InputError
                                     message={formErrors?.[

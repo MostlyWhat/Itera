@@ -1,6 +1,6 @@
 <script lang="ts">
-    import Eye from '@lucide/svelte/icons/eye';
-    import EyeOff from '@lucide/svelte/icons/eye-off';
+    import View from 'carbon-icons-svelte/lib/View.svelte';
+    import ViewOff from 'carbon-icons-svelte/lib/ViewOff.svelte';
     import { Input } from '@/components/ui/input';
     import { cn } from '@/lib/utils';
 
@@ -23,9 +23,9 @@
         tabindex={-1}
     >
         {#if showPassword}
-            <EyeOff class="size-4" />
+            <ViewOff class="size-4" />
         {:else}
-            <Eye class="size-4" />
+            <View class="size-4" />
         {/if}
     </button>
 </div>

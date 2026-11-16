@@ -27,6 +27,9 @@ export default defineConfig({
         }),
     ]),
     server: {
+        // Herd names the dev host after the folder ("Itera.test"). The browser
+        // sends "itera.test", and the hot-reload websocket compares hosts by case.
+        allowedHosts: ['.test'],
         watch: {
             ignored: [
                 '**/.agents/**',
@@ -73,6 +76,8 @@ export default defineConfig({
             'composer.json',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
+            // Vendored from shadcn-svelte. Keep it as published.
+            'resources/css/typeset.css',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],
