@@ -1,65 +1,33 @@
-name: tests
+name: Deploy
 
+# Runs on a push to main (a merged pull request) and on a manual run.
 on:
   push:
     branches:
       - main
-  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Commit message markers (GitHub reads the last commit of a push, or the PR title):
+# Commit message markers (GitHub reads the last commit of a push):
 #   [skip ci]     GitHub skips the whole workflow (built-in, no tests and no deploy).
-#   [skip tests]  Skip the ci job. The deploy job still runs on main.
-#   [skip deploy] Run the ci job, but do not deploy.
+#   [skip tests]  Skip the tests. The deploy job still runs.
+#   [skip deploy] Run the tests, but do not deploy.
 
 jobs:
-  ci:
-    if: ${{ !contains(github.event.head_commit.message || github.event.pull_request.title || '', '[skip tests]') }}
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
-        with:
-          php-version: '8.4'
-          tools: composer:v2
-          coverage: none
-
-      # Installs the pnpm version from "packageManager" in package.json.
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-
-      - name: Setup Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: '22'
-          cache: pnpm
-
-      - name: Setup Application
-        run: composer setup
-
-      - name: Run CI Checks
-        run: composer ci:check
+  tests:
+    uses: ./.github/workflows/tests.yml
 
   deploy:
     name: Deploy to Wasmer Edge
-    needs: ci
-    # Deploy only from main: on a push, or on a manual run of this workflow.
-    # The ci job must pass, or be skipped with [skip tests].
+    needs: tests
+    # Deploy only from main. The tests must pass, or be skipped with [skip tests].
     if: >-
       ${{
         !cancelled()
         && github.ref == 'refs/heads/main'
-        && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        && (needs.ci.result == 'success' || needs.ci.result == 'skipped')
+        && (needs.tests.result == 'success' || needs.tests.result == 'skipped')
         && !contains(github.event.head_commit.message || '', '[skip deploy]')
       }}
     runs-on: ubuntu-latest

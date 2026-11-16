@@ -12,7 +12,18 @@ Itera runs on [Wasmer Edge](https://docs.wasmer.io/edge/). GitHub Actions builds
 
 ## CI/CD
 
-The `deploy` job in `.github/workflows/ci.yml` starts after the `ci` job passes. It runs only for a push to `main` or a manual run on `main`. It never runs for a pull request. One production deployment runs at a time.
+Two workflows run the pipeline:
+
+| Workflow | File                           | Runs on                                                   | Jobs                                  |
+| -------- | ------------------------------ | --------------------------------------------------------- | ------------------------------------- |
+| Tests    | `.github/workflows/tests.yml`  | Each pull request, a manual run, and a call from Deploy   | `Tests`                               |
+| Deploy   | `.github/workflows/deploy.yml` | A push to `main` (a merged pull request) and a manual run | `Tests`, then `Deploy to Wasmer Edge` |
+
+The `Deploy to Wasmer Edge` job starts after the tests pass. It never runs for a pull request. One production deployment runs at a time.
+
+### Branch ruleset
+
+A ruleset on `main` requires a pull request and the `Tests` check before a merge. To set it up, see [Set up the branch ruleset](#set-up-the-branch-ruleset).
 
 The job does these steps:
 
@@ -102,3 +113,19 @@ A rollback does not undo migrations. Write migrations that work with the previou
 - Wasmer CLI 7.5 reads a health check only in the YAML tag form (`- !http`). The CLI also rewrites `app.yaml` on each deploy.
 - A Wasmer `pre-deployment` job with `execute` did not run in tests, so CI runs the migrations. The database must accept connections from GitHub Actions.
 - `wasmer run` with this runtime does not work on Windows (`ProcessCputimeId` is not implemented). Test the package on Linux, in WSL, or in Docker.
+
+## Set up the branch ruleset
+
+Do these steps one time, as a repository admin, after `tests.yml` is on GitHub.
+
+1. Open the repository on GitHub. Go to **Settings > Rules > Rulesets**.
+2. Click **New ruleset > New branch ruleset**.
+3. Set **Ruleset name** to `Protect main` and **Enforcement status** to **Active**.
+4. Under **Target branches**, click **Add target > Include default branch**.
+5. Select **Restrict deletions** and **Block force pushes**.
+6. Select **Require a pull request before merging**. Set **Required approvals** to `0`, so you can merge your own pull request.
+7. Select **Require status checks to pass**. Click **Add checks**, type `Tests`, and select the check from **GitHub Actions**.
+8. Select **Require branches to be up to date before merging**.
+9. Click **Create**.
+
+The `Tests` check shows in the list only after it ran one time. Open a pull request first if the search finds nothing.

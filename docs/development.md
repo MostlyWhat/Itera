@@ -80,12 +80,14 @@ To skip the hook for one commit, use `git commit --no-verify`.
 
 ## Commit markers
 
-Put a marker in the commit message to skip CI jobs. For a push, GitHub reads only the last commit. For a pull request, put the marker in the title.
+Put a marker in the commit message to skip CI jobs on a push to `main`. GitHub reads only the last commit of a push.
 
-| Marker          | Tests | Deploy          |
-| --------------- | ----- | --------------- |
-| `[skip ci]`     | No    | No              |
-| `[skip tests]`  | No    | Yes (on `main`) |
-| `[skip deploy]` | Yes   | No              |
+| Marker          | Tests | Deploy |
+| --------------- | ----- | ------ |
+| `[skip ci]`     | No    | No     |
+| `[skip tests]`  | No    | Yes    |
+| `[skip deploy]` | Yes   | No     |
+
+Pull requests always run the tests. The `Tests` check is required before a merge, so a marker cannot skip it.
 
 Example: `docs: fix typo in README [skip deploy]`. Use `[skip tests]` only for changes that cannot break the build.
