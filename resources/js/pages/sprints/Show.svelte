@@ -25,13 +25,13 @@
 
 <script lang="ts">
     import { Form, page, router } from '@inertiajs/svelte';
-    import { tick } from 'svelte';
     import Add from 'carbon-icons-svelte/lib/Add.svelte';
     import Close from 'carbon-icons-svelte/lib/Close.svelte';
     import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
     import Search from 'carbon-icons-svelte/lib/Search.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
+    import FormDialog from '@/components/FormDialog.svelte';
     import InputError from '@/components/InputError.svelte';
     import PointsMeter from '@/components/sprints/PointsMeter.svelte';
     import { Button } from '@/components/ui/button';
@@ -99,10 +99,9 @@
     );
 
     let busy = $state(false);
-    // The goal and the new-task form open on request. A sprint without a
-    // goal opens with the goal form, because the goal comes first.
-    // svelte-ignore state_referenced_locally
-    let editingGoal = $state(sprint.editable && !sprint.goal);
+    // The goal and the new task are entered in dialogs, so the two lists
+    // below keep their place.
+    let editingGoal = $state(false);
     let addingTask = $state(false);
     let filter = $state('');
 
@@ -182,24 +181,22 @@
                     >
                 {/if}
             </div>
-            {#if !editingGoal}
-                <p class="flex flex-wrap items-center gap-x-2 text-sm">
-                    <span class={cn('wrap-break-word', !sprint.goal && 'text-muted-foreground')}
-                        >{sprint.goal ?? 'No goal'}</span
+            <p class="flex flex-wrap items-center gap-x-2 text-sm">
+                <span class={cn('wrap-break-word', !sprint.goal && 'text-muted-foreground')}
+                    >{sprint.goal ?? 'No goal yet'}</span
+                >
+                {#if sprint.editable}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 gap-1 px-1.5 text-muted-foreground hover:text-foreground"
+                        onclick={() => (editingGoal = true)}
                     >
-                    {#if sprint.editable}
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            class="h-7 gap-1 px-1.5 text-muted-foreground hover:text-foreground"
-                            onclick={() => (editingGoal = true)}
-                        >
-                            <Edit class="size-3.5" />
-                            Edit goal
-                        </Button>
-                    {/if}
-                </p>
-            {/if}
+                        <Edit class="size-3.5" />
+                        {sprint.goal ? 'Edit goal' : 'Add a goal'}
+                    </Button>
+                {/if}
+            </p>
             <p class="text-sm text-muted-foreground tabular-nums">
                 {formatWeekRange(sprint.weekStart, sprint.weekEnd)} · {sprint.taskCount}
                 {sprint.taskCount === 1 ? 'task' : 'tasks'}
@@ -213,188 +210,29 @@
     </header>
 
     {#if sprint.editable}
-        {#if editingGoal}
-        <Form
-            {...update.form({ current_team: team, sprint: sprint.id })}
-            options={{ preserveScroll: true }}
-            onSuccess={() => (editingGoal = false)}
-            class="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-4"
-        >
-            {#snippet children({ processing, isDirty })}
-                <div class="flex flex-wrap items-end gap-3">
-                    <div class="flex min-w-0 flex-1 basis-64 flex-col gap-1.5">
-                        <label
-                            for="sprint-goal"
-                            class="text-xs font-medium text-muted-foreground"
-                            >Sprint goal</label
-                        >
-                        <Input
-                            id="sprint-goal"
-                            name="goal"
-                            value={sprint.goal ?? ''}
-                            maxlength={200}
-                            placeholder="What does this week need to achieve?"
-                            autocomplete="off"
-                        />
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label
-                            for="sprint-target"
-                            class="text-xs font-medium text-muted-foreground"
-                            >Point target</label
-                        >
-                        <Input
-                            id="sprint-target"
-                            name="target_points"
-                            type="number"
-                            min={1}
-                            max={999}
-                            inputmode="numeric"
-                            value={sprint.targetPoints === null ? '' : String(sprint.targetPoints)}
-                            class="w-28"
-                        />
-                    </div>
-                    {#if sprint.goal}
-                        <Button type="button" variant="ghost" onclick={() => (editingGoal = false)}>
-                            Cancel
-                        </Button>
-                    {/if}
-                    <Button type="submit" disabled={processing || (!isDirty && !!sprint.goal)}>
-                        Save goal
-                    </Button>
-                </div>
-                <InputError message={errors.goal ?? errors.target_points} />
-            {/snippet}
-        </Form>
-        {/if}
 
         <div class="grid gap-6 lg:grid-cols-2 lg:items-start">
             <!-- The sprint: the work for this week. -->
             <section aria-labelledby="sprint-tasks" class="flex min-w-0 flex-col gap-3">
-                <h2 id="sprint-tasks" class="type-section">
-                    In this sprint
-                    <span class="font-normal text-muted-foreground tabular-nums"
-                        >({commitments.length})</span
-                    >
-                </h2>
-
-                {#if addingTask}
-                <Form
-                    {...storeSprintTask.form({ current_team: team, sprint: sprint.id })}
-                    options={{ preserveScroll: true }}
-                    resetOnSuccess={['title']}
-                    onSuccess={() => (newPoints = '')}
-                    class="rounded-lg border border-dashed border-border p-3"
-                >
-                    {#snippet children({ errors: formErrors, processing })}
-                        <p class="mb-2 text-xs font-medium text-muted-foreground">
-                            New task in this sprint
-                        </p>
-                        {#if projects.length === 0}
-                            <p class="text-sm text-muted-foreground">
-                                Create a project first, on the Projects page.
-                            </p>
-                        {:else}
-                            <div class="flex flex-col gap-2">
-                                <label for="new-task-title" class="sr-only">Task title</label>
-                                <Input
-                                    id="new-task-title"
-                                    name="title"
-                                    maxlength={200}
-                                    placeholder="What needs to be done?"
-                                    autocomplete="off"
-                                    required
-                                    onkeydown={(event: KeyboardEvent) => {
-                                        if (event.key === 'Escape') {
-                                            addingTask = false;
-                                        }
-                                    }}
-                                />
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <label for="new-task-project" class="sr-only">Project</label>
-                                    <Select type="single" name="project_id" bind:value={newProject}>
-                                        <SelectTrigger
-                                            id="new-task-project"
-                                            class="w-auto min-w-0 flex-1 basis-40"
-                                        >
-                                            <span class="truncate">{newProjectName}</span>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {#each projectGroups as [areaName, areaProjects] (areaName)}
-                                                <SelectGroup>
-                                                    <SelectGroupHeading>{areaName}</SelectGroupHeading>
-                                                    {#each areaProjects as project (project.id)}
-                                                        <SelectItem
-                                                            value={String(project.id)}
-                                                            label={project.name}
-                                                        />
-                                                    {/each}
-                                                </SelectGroup>
-                                            {/each}
-                                        </SelectContent>
-                                    </Select>
-                                    <label for="new-task-points" class="sr-only">Story points</label>
-                                    <Select type="single" name="story_points" bind:value={newPoints}>
-                                        <SelectTrigger
-                                            id="new-task-points"
-                                            class={cn(
-                                                'w-28 tabular-nums',
-                                                newPoints === '' && 'text-muted-foreground',
-                                            )}
-                                        >
-                                            {newPoints === '' ? '– pts' : `${newPoints} pts`}
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="" label="No points" />
-                                            {#each storyPointOptions as points (points)}
-                                                <SelectItem
-                                                    value={String(points)}
-                                                    label={`${points} pts`}
-                                                />
-                                            {/each}
-                                        </SelectContent>
-                                    </Select>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        onclick={() => (addingTask = false)}
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button type="submit" disabled={processing}>
-                                        Add
-                                    </Button>
-                                </div>
-                                <InputError
-                                    message={formErrors.title ??
-                                        formErrors.project_id ??
-                                        formErrors.story_points}
-                                />
-                            </div>
-                        {/if}
-                    {/snippet}
-                </Form>
-                {:else}
-                    <Button
-                        variant="outline"
-                        class="w-full justify-start gap-2 border-dashed text-muted-foreground hover:text-foreground"
-                        onclick={async () => {
-                            addingTask = true;
-                            await tick();
-                            document.getElementById('new-task-title')?.focus();
-                        }}
-                    >
+                <div class="flex min-h-8 items-center justify-between gap-3">
+                    <h2 id="sprint-tasks" class="type-section">
+                        In this sprint
+                        <span class="font-normal text-muted-foreground tabular-nums"
+                            >({commitments.length})</span
+                        >
+                    </h2>
+                    <Button variant="outline" size="sm" class="gap-1.5" onclick={() => (addingTask = true)}>
                         <Add class="size-4" />
-                        New task in this sprint
+                        New task
                     </Button>
-                {/if}
+                </div>
+
 
                 {#if commitments.length === 0}
                     <p
                         class="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground"
                     >
-                        No tasks yet. Add tasks from the backlog, or make a new
-                        one.
+                        No tasks yet. Add tasks from the backlog, or use New task.
                     </p>
                 {:else}
                     <ul class="overflow-hidden rounded-lg border border-border bg-card">
@@ -435,7 +273,7 @@
 
             <!-- The backlog: open tasks to pull into the sprint. -->
             <section aria-labelledby="backlog-title" class="flex min-w-0 flex-col gap-3">
-                <h2 id="backlog-title" class="type-section">
+                <h2 id="backlog-title" class="flex min-h-8 items-center type-section">
                     Backlog
                     <span class="font-normal text-muted-foreground tabular-nums"
                         >({backlog.length})</span
@@ -550,3 +388,138 @@
         </section>
     {/if}
 </div>
+
+{#if sprint.editable}
+    <FormDialog
+        bind:open={editingGoal}
+        title={sprint.goal ? 'Edit sprint goal' : 'Add a sprint goal'}
+        description="Say what this week needs to achieve, and how many points fit."
+    >
+        <Form
+            {...update.form({ current_team: team, sprint: sprint.id })}
+            options={{ preserveScroll: true }}
+            onSuccess={() => (editingGoal = false)}
+            class="flex flex-col gap-5"
+        >
+            {#snippet children({ processing })}
+                <div class="flex flex-col gap-2">
+                    <label for="sprint-goal" class="text-sm font-medium">Sprint goal</label>
+                    <Input
+                        id="sprint-goal"
+                        name="goal"
+                        value={sprint.goal ?? ''}
+                        maxlength={200}
+                        placeholder="For example: Hand in the lab report"
+                        autocomplete="off"
+                    />
+                    <InputError message={errors.goal} />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label for="sprint-target" class="text-sm font-medium">Point target</label>
+                    <Input
+                        id="sprint-target"
+                        name="target_points"
+                        type="number"
+                        min={1}
+                        max={999}
+                        inputmode="numeric"
+                        value={sprint.targetPoints === null ? '' : String(sprint.targetPoints)}
+                        placeholder="For example 13"
+                        class="w-32"
+                    />
+                    <InputError message={errors.target_points} />
+                </div>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <Button type="button" variant="ghost" onclick={() => (editingGoal = false)}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" disabled={processing}>Save goal</Button>
+                </div>
+            {/snippet}
+        </Form>
+    </FormDialog>
+
+    <FormDialog
+        bind:open={addingTask}
+        title="New task in this sprint"
+        description="The task goes into its project and into this week."
+    >
+        {#if projects.length === 0}
+            <p class="text-sm text-muted-foreground">
+                Create a project first, on the Projects page.
+            </p>
+        {:else}
+            <Form
+                {...storeSprintTask.form({ current_team: team, sprint: sprint.id })}
+                options={{ preserveScroll: true }}
+                resetOnSuccess
+                onSuccess={() => {
+                    newPoints = '';
+                    addingTask = false;
+                }}
+                class="flex flex-col gap-5"
+            >
+                {#snippet children({ errors: formErrors, processing })}
+                    <div class="flex flex-col gap-2">
+                        <label for="new-task-title" class="text-sm font-medium">Title</label>
+                        <Input
+                            id="new-task-title"
+                            name="title"
+                            maxlength={200}
+                            placeholder="For example: Write the method section"
+                            autocomplete="off"
+                            required
+                            aria-invalid={formErrors.title ? 'true' : undefined}
+                        />
+                        <InputError message={formErrors.title} />
+                    </div>
+                    <div class="grid gap-5 sm:grid-cols-[minmax(0,1fr)_8rem]">
+                        <div class="flex min-w-0 flex-col gap-2">
+                            <label for="new-task-project" class="text-sm font-medium">Project</label>
+                            <Select type="single" name="project_id" bind:value={newProject}>
+                                <SelectTrigger id="new-task-project" class="w-full">
+                                    <span class="truncate">{newProjectName}</span>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {#each projectGroups as [areaName, areaProjects] (areaName)}
+                                        <SelectGroup>
+                                            <SelectGroupHeading>{areaName}</SelectGroupHeading>
+                                            {#each areaProjects as project (project.id)}
+                                                <SelectItem value={String(project.id)} label={project.name} />
+                                            {/each}
+                                        </SelectGroup>
+                                    {/each}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={formErrors.project_id} />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="new-task-points" class="text-sm font-medium">Story points</label>
+                            <Select type="single" name="story_points" bind:value={newPoints}>
+                                <SelectTrigger
+                                    id="new-task-points"
+                                    class={cn('w-full tabular-nums', newPoints === '' && 'text-muted-foreground')}
+                                >
+                                    {newPoints === '' ? 'None' : `${newPoints} pts`}
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="" label="No points" />
+                                    {#each storyPointOptions as points (points)}
+                                        <SelectItem value={String(points)} label={`${points} pts`} />
+                                    {/each}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={formErrors.story_points} />
+                        </div>
+                    </div>
+                    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <Button type="button" variant="ghost" onclick={() => (addingTask = false)}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={processing}>Add task</Button>
+                    </div>
+                {/snippet}
+            </Form>
+        {/if}
+    </FormDialog>
+{/if}

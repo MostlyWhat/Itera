@@ -25,6 +25,7 @@
 <script lang="ts">
     import { page, router } from '@inertiajs/svelte';
     import { SvelteSet } from 'svelte/reactivity';
+    import Add from 'carbon-icons-svelte/lib/Add.svelte';
     import Archive from 'carbon-icons-svelte/lib/Archive.svelte';
     import Calendar from 'carbon-icons-svelte/lib/Calendar.svelte';
     import Checkmark from 'carbon-icons-svelte/lib/Checkmark.svelte';
@@ -35,6 +36,7 @@
     import Undo from 'carbon-icons-svelte/lib/Undo.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
+    import FormDialog from '@/components/FormDialog.svelte';
     import ProjectForm from '@/components/projects/ProjectForm.svelte';
     import type { ProjectNavigation } from '@/components/projects/ProjectRail.svelte';
     import ProjectsShell from '@/components/projects/ProjectsShell.svelte';
@@ -104,8 +106,18 @@
 
     const team = $derived((page.props.currentTeam as Team).slug);
 
-    let editing = $state<number | null>(null);
-    let editingProject = $state(false);
+    // Data entry happens in dialogs, so the list never moves under the user.
+    // `taskDialog` is "new", a Task to edit, or null when closed.
+    let taskDialog = $state<'new' | TaskItem | null>(null);
+    let taskDialogOpen = $state(false);
+    let projectDialogOpen = $state(false);
+
+    const openTask = (value: 'new' | TaskItem) => {
+        taskDialog = value;
+        taskDialogOpen = true;
+    };
+    const closeTask = () => (taskDialogOpen = false);
+    const editedTask = $derived(taskDialog !== null && taskDialog !== 'new' ? taskDialog : null);
 
     // Descriptions show two lines. A click on the text shows all of it.
     const expanded = new SvelteSet<number>();
@@ -151,29 +163,7 @@
 <AppHead title={project.name} />
 
 {#snippet taskRow(task: TaskItem)}
-    <li
-        class={cn(
-            'group/row border-t border-border first:border-t-0',
-            editing !== task.id && 'transition-colors hover:bg-muted/40',
-        )}
-    >
-        {#if editing === task.id}
-            <div class="bg-muted/30 px-4 py-4">
-                <TaskForm
-                    action={updateTask.form({
-                        current_team: team,
-                        task: task.id,
-                    })}
-                    task={task}
-                    pointOptions={storyPointOptions}
-                    {statusOptions}
-                    submitLabel="Save task"
-                    focus
-                    onDone={() => (editing = null)}
-                    onCancel={() => (editing = null)}
-                />
-            </div>
-        {:else}
+    <li class="group/row border-t border-border transition-colors first:border-t-0 hover:bg-muted/40">
             <div class="flex min-h-12 items-center gap-3 py-2 pr-2 pl-4">
                 <button
                     type="button"
@@ -279,7 +269,7 @@
                         class="w-40"
                         onCloseAutoFocus={(event: Event) => event.preventDefault()}
                     >
-                        <DropdownMenuItem onSelect={() => (editing = task.id)}>
+                        <DropdownMenuItem onSelect={() => openTask(task)}>
                             <Edit class="size-4" />
                             Edit
                         </DropdownMenuItem>
@@ -294,23 +284,11 @@
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-        {/if}
     </li>
 {/snippet}
 
 <ProjectsShell {navigation} {team} currentId={project.id}>
     <header class="mb-8">
-        {#if editingProject}
-            <div class="rounded-lg border border-border bg-card p-4">
-                <ProjectForm
-                    action={updateProject.form({ current_team: team, project: project.id })}
-                    name={project.name}
-                    description={project.description}
-                    onDone={() => (editingProject = false)}
-                    onCancel={() => (editingProject = false)}
-                />
-            </div>
-        {:else}
             <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0 space-y-1">
                     <h1 class="type-title wrap-break-word">{project.name}</h1>
@@ -331,14 +309,9 @@
                 </div>
                 {#if !project.archived}
                     <div class="flex shrink-0 items-center gap-1">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            class="gap-1.5 text-muted-foreground hover:text-foreground"
-                            onclick={() => (editingProject = true)}
-                        >
-                            <Edit class="size-4" />
-                            Edit
+                        <Button onclick={() => openTask('new')}>
+                            <Add class="size-4" />
+                            Add task
                         </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger>
@@ -348,13 +321,21 @@
                                         variant="ghost"
                                         size="icon"
                                         class="size-8 text-muted-foreground hover:text-foreground data-[state=open]:bg-accent"
-                                        aria-label={`More actions for ${project.name}`}
+                                        aria-label={`Actions for ${project.name}`}
                                     >
                                         <OverflowMenuVertical class="size-4" />
                                     </Button>
                                 {/snippet}
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" class="w-44">
+                            <DropdownMenuContent
+                                align="end"
+                                class="w-44"
+                                onCloseAutoFocus={(event: Event) => event.preventDefault()}
+                            >
+                                <DropdownMenuItem onSelect={() => (projectDialogOpen = true)}>
+                                    <Edit class="size-4" />
+                                    Edit project
+                                </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onSelect={() =>
                                         router.post(
@@ -374,7 +355,6 @@
             {#if project.description}
                 <p class="mt-3 max-w-prose text-sm whitespace-pre-line text-muted-foreground">{project.description}</p>
             {/if}
-        {/if}
     </header>
 
     {#if project.archived}
@@ -400,15 +380,6 @@
 
     <section aria-labelledby="open-tasks" class="overflow-hidden rounded-lg border border-border bg-card">
         <h2 id="open-tasks" class="sr-only">Open tasks</h2>
-        {#if !project.archived}
-            <div class={cn('p-3', openTasks.length > 0 && 'border-b border-border')}>
-                <TaskForm
-                    action={storeTask.form({ current_team: team, project: project.id })}
-                    pointOptions={storyPointOptions}
-                    submitLabel="Add task"
-                />
-            </div>
-        {/if}
         {#if openTasks.length > 0}
             <ul>
                 {#each openTasks as task (task.id)}
@@ -416,9 +387,9 @@
                 {/each}
             </ul>
         {:else}
-            <p class="px-4 pt-2 pb-6 text-sm text-muted-foreground">
+            <p class="px-4 py-8 text-center text-sm text-muted-foreground">
                 {tasks.length === 0
-                    ? 'No tasks yet. Type the first one above and press Enter.'
+                    ? 'No tasks yet. Use Add task to write the first one.'
                     : 'All tasks are done.'}
             </p>
         {/if}
@@ -441,6 +412,45 @@
         </details>
     {/if}
 </ProjectsShell>
+
+<FormDialog
+    bind:open={taskDialogOpen}
+    title={editedTask ? 'Edit task' : 'New task'}
+    description={editedTask ? undefined : `In ${project.name}.`}
+    size="lg"
+>
+    {#key editedTask?.id ?? 'new'}
+        {#if editedTask}
+            <TaskForm
+                action={updateTask.form({ current_team: team, task: editedTask.id })}
+                task={editedTask}
+                pointOptions={storyPointOptions}
+                {statusOptions}
+                submitLabel="Save task"
+                onDone={closeTask}
+                onCancel={closeTask}
+            />
+        {:else}
+            <TaskForm
+                action={storeTask.form({ current_team: team, project: project.id })}
+                pointOptions={storyPointOptions}
+                submitLabel="Add task"
+                onDone={closeTask}
+                onCancel={closeTask}
+            />
+        {/if}
+    {/key}
+</FormDialog>
+
+<FormDialog bind:open={projectDialogOpen} title="Edit project">
+    <ProjectForm
+        action={updateProject.form({ current_team: team, project: project.id })}
+        name={project.name}
+        description={project.description}
+        onDone={() => (projectDialogOpen = false)}
+        onCancel={() => (projectDialogOpen = false)}
+    />
+</FormDialog>
 
 <AlertDialog
     open={deleting !== null}

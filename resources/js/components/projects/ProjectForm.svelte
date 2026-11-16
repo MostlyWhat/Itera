@@ -39,8 +39,8 @@
     onSuccess={() => onDone()}
 >
     {#snippet children({ errors, processing })}
-        <div class="flex flex-col gap-1.5">
-            <label for={`${id}-name`} class="text-xs font-medium text-muted-foreground"
+        <div class="flex flex-col gap-2">
+            <label for={`${id}-name`} class="text-sm font-medium"
                 >Project name</label
             >
             <Input
@@ -61,10 +61,10 @@
             <InputError message={errors.name} />
         </div>
 
-        <div class="flex flex-col gap-1.5">
+        <div class="flex flex-col gap-2">
             <label
                 for={`${id}-description`}
-                class="text-xs font-medium text-muted-foreground">Description</label
+                class="text-sm font-medium">Description</label
             >
             <Textarea
                 id={`${id}-description`}
@@ -79,7 +79,7 @@
             <InputError message={errors.description} />
         </div>
 
-        <div class="flex justify-end gap-2">
+        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="ghost" onclick={onCancel}>Cancel</Button>
             <Button type="submit" disabled={processing}>Save project</Button>
         </div>
