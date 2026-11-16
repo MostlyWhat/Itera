@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Sprints;
 
 use App\Actions\Sprints\SyncSprintTasks;
+use App\Enums\StoryPoints;
 use App\Enums\TaskStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sprints\StoreSprintRequest;
+use App\Http\Requests\Sprints\StoreSprintTaskRequest;
 use App\Http\Requests\Sprints\UpdateSprintRequest;
+use App\Models\Project;
 use App\Models\Sprint;
 use App\Models\SprintCommitment;
 use App\Models\Task;
@@ -48,7 +51,7 @@ class SprintController extends Controller
                 'week_start', 'goal', 'target_points',
             ]));
 
-            $syncTasks->handle($sprint, $request->validated('task_ids'));
+            $syncTasks->handle($sprint, $request->validated('task_ids', []));
 
             return $sprint;
         });
@@ -81,6 +84,8 @@ class SprintController extends Controller
                 'status' => $commitment->task?->status->value,
             ]),
             'candidates' => $sprint->isEditable() ? $this->candidates($sprint) : [],
+            'projects' => $sprint->isEditable() ? $this->projects($sprint) : [],
+            'storyPointOptions' => StoryPoints::values(),
         ]);
     }
 
@@ -93,10 +98,39 @@ class SprintController extends Controller
 
         DB::transaction(function () use ($request, $sprint, $syncTasks) {
             $sprint->update($request->safe()->only(['goal', 'target_points']));
-            $syncTasks->handle($sprint, $request->validated('task_ids'));
+
+            if ($request->has('task_ids')) {
+                $syncTasks->handle($sprint, $request->validated('task_ids', []));
+            }
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Sprint saved.')]);
+
+        return back();
+    }
+
+    /**
+     * Create a new Task in one of the team's Projects and add it to the Sprint.
+     */
+    public function addTask(StoreSprintTaskRequest $request, Sprint $sprint): RedirectResponse
+    {
+        Gate::authorize('update', $sprint);
+
+        DB::transaction(function () use ($request, $sprint) {
+            $task = Project::query()
+                ->whereKey($request->validated('project_id'))
+                ->firstOrFail()
+                ->tasks()
+                ->create($request->safe()->only(['title', 'story_points', 'due_date']));
+
+            $sprint->commitments()->create([
+                'task_id' => $task->id,
+                'task_title' => $task->title,
+                'committed_points' => $task->story_points?->value,
+            ]);
+        });
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Task added to the sprint.')]);
 
         return back();
     }
@@ -156,6 +190,28 @@ class SprintController extends Controller
                 'projectName' => $task->project->name,
                 'areaName' => $task->project->area->name,
                 'takenBy' => $taken->get($task->id)?->sprint->week_start->toDateString(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The active Projects of the team, for the "new task" form.
+     *
+     * @return array<int, array{id: int, name: string, areaName: string}>
+     */
+    private function projects(Sprint $sprint): array
+    {
+        return Project::query()
+            ->active()
+            ->whereHas('area', fn ($areas) => $areas->active()->where('team_id', $sprint->team_id))
+            ->with('area')
+            ->get()
+            ->sortBy(fn (Project $project) => [$project->area->position, $project->position])
+            ->map(fn (Project $project) => [
+                'id' => $project->id,
+                'name' => $project->name,
+                'areaName' => $project->area->name,
             ])
             ->values()
             ->all();

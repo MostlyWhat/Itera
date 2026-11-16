@@ -40,6 +40,7 @@ Route::prefix('{current_team}')
         Route::post('sprints', [SprintController::class, 'store'])->name('sprints.store');
         Route::get('sprints/{sprint}', [SprintController::class, 'show'])->name('sprints.show');
         Route::patch('sprints/{sprint}', [SprintController::class, 'update'])->name('sprints.update');
+        Route::post('sprints/{sprint}/tasks', [SprintController::class, 'addTask'])->name('sprints.tasks.store');
     });
 
 Route::middleware(['auth'])->group(function () {

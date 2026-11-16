@@ -71,13 +71,25 @@ trait SprintTaskRules
 
     /**
      * Prepare the data for validation. Empty form fields mean "no value".
+     * Only the fields in the request change, so the planning page can save
+     * the goal and the tasks separately.
      */
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'goal' => $this->filled('goal') ? trim((string) $this->input('goal')) : null,
-            'target_points' => $this->filled('target_points') ? $this->input('target_points') : null,
-            'task_ids' => $this->input('task_ids', []),
-        ]);
+        $data = [];
+
+        if ($this->exists('goal')) {
+            $data['goal'] = $this->filled('goal') ? trim((string) $this->input('goal')) : null;
+        }
+
+        if ($this->exists('target_points')) {
+            $data['target_points'] = $this->filled('target_points') ? $this->input('target_points') : null;
+        }
+
+        if ($this->exists('task_ids')) {
+            $data['task_ids'] = $this->input('task_ids') ?? [];
+        }
+
+        $this->merge($data);
     }
 }

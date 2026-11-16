@@ -17,6 +17,17 @@ class UpdateSprintRequest extends FormRequest
     use SprintTaskRules;
 
     /**
+     * Only team members can change an open Sprint whose week has not ended.
+     * This runs before the validation, so another user gets 403.
+     */
+    public function authorize(): bool
+    {
+        $sprint = $this->route('sprint');
+
+        return $sprint instanceof Sprint && $this->user()->can('update', $sprint);
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>

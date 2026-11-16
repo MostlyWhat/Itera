@@ -218,3 +218,90 @@ test('the sprint page shows the plan and marks tasks that another sprint has', f
             ->has('commitments', 1)
             ->where('candidates.0.takenBy', null));
 });
+
+test('users can create a new task directly in a sprint', function () {
+    [$user, $slug, $first] = userWithTasks();
+    $sprint = Sprint::factory()->for($user->currentTeam)->create(['week_start' => '2026-11-16']);
+
+    $this->actingAs($user)
+        ->post(route('sprints.tasks.store', [$slug, $sprint]), [
+            'title' => 'Email the lab partner',
+            'project_id' => $first->project_id,
+            'story_points' => 2,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $task = Task::query()->where('title', 'Email the lab partner')->sole();
+    $commitment = $sprint->commitments()->sole();
+
+    expect($task->project_id)->toBe($first->project_id)
+        ->and($commitment->task_id)->toBe($task->id)
+        ->and($commitment->committed_points)->toBe(2);
+});
+
+test('a new sprint task needs a title and one of the team projects', function () {
+    [$user, $slug, $first] = userWithTasks();
+    [, , $otherTask] = userWithTasks();
+    $sprint = Sprint::factory()->for($user->currentTeam)->create(['week_start' => '2026-11-16']);
+
+    $this->actingAs($user)
+        ->post(route('sprints.tasks.store', [$slug, $sprint]), ['title' => '', 'project_id' => $first->project_id])
+        ->assertSessionHasErrors('title');
+
+    $this->actingAs($user)
+        ->post(route('sprints.tasks.store', [$slug, $sprint]), ['title' => 'Intruder', 'project_id' => $otherTask->project_id])
+        ->assertSessionHasErrors('project_id');
+
+    $this->actingAs($user)
+        ->post(route('sprints.tasks.store', [$slug, $sprint]), ['title' => 'Task', 'project_id' => $first->project_id, 'story_points' => 4])
+        ->assertSessionHasErrors('story_points');
+
+    expect($sprint->commitments()->count())->toBe(0);
+});
+
+test('saving only the tasks keeps the goal and target', function () {
+    [$user, $slug, $first] = userWithTasks();
+    $sprint = Sprint::factory()->for($user->currentTeam)->create([
+        'week_start' => '2026-11-16',
+        'goal' => 'Hand in the lab report',
+        'target_points' => 8,
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('sprints.update', [$slug, $sprint]), ['task_ids' => [$first->id]])
+        ->assertSessionHasNoErrors();
+
+    $sprint->refresh();
+
+    expect($sprint->goal)->toBe('Hand in the lab report')
+        ->and($sprint->target_points)->toBe(8)
+        ->and($sprint->commitments()->count())->toBe(1);
+});
+
+test('saving only the goal keeps the tasks', function () {
+    [$user, $slug, $first] = userWithTasks();
+    $sprint = Sprint::factory()->for($user->currentTeam)->create(['week_start' => '2026-11-16']);
+    SprintCommitment::factory()->for($sprint)->create(['task_id' => $first->id]);
+
+    $this->actingAs($user)
+        ->patch(route('sprints.update', [$slug, $sprint]), ['goal' => 'New goal', 'target_points' => ''])
+        ->assertSessionHasNoErrors();
+
+    expect($sprint->fresh()->goal)->toBe('New goal')
+        ->and($sprint->fresh()->target_points)->toBeNull()
+        ->and($sprint->commitments()->count())->toBe(1);
+});
+
+test('users cannot add a task to a past sprint or the sprint of another user', function () {
+    [$user, $slug, $first] = userWithTasks();
+    $past = Sprint::factory()->for($user->currentTeam)->create(['week_start' => '2026-11-09']);
+    $other = Sprint::factory()->for(User::factory()->create()->currentTeam)->create(['week_start' => '2026-11-16']);
+
+    $this->actingAs($user)
+        ->post(route('sprints.tasks.store', [$slug, $past]), ['title' => 'Late', 'project_id' => $first->project_id])
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->post(route('sprints.tasks.store', [$slug, $other]), ['title' => 'Intruder', 'project_id' => $first->project_id])
+        ->assertForbidden();
+});
