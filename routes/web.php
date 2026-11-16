@@ -3,6 +3,7 @@
 use App\Http\Controllers\Areas\AreaController;
 use App\Http\Controllers\Areas\ProjectController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Middleware\EnsureTeamMembership;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,12 @@ Route::prefix('{current_team}')
         Route::patch('projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
         Route::post('projects/{project}/archive', [ProjectController::class, 'archive'])->name('projects.archive');
         Route::delete('projects/{project}/archive', [ProjectController::class, 'unarchive'])->name('projects.unarchive');
+
+        // Tasks (ITERA-03)
+        Route::get('projects/{project}', [TaskController::class, 'index'])->name('projects.show');
+        Route::post('projects/{project}/tasks', [TaskController::class, 'store'])->name('tasks.store');
+        Route::patch('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+        Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
     });
 
 Route::middleware(['auth'])->group(function () {
