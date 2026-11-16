@@ -68,7 +68,24 @@ test('the dashboard has no board without a sprint this week', function () {
 
     $this->actingAs($user)
         ->get(route('dashboard', $user->currentTeam->slug))
-        ->assertInertia(fn (Assert $page) => $page->where('board', null));
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('board', null)
+            ->where('setup', ['hasProject' => false, 'hasTask' => false]));
+});
+
+test('the setup steps on the dashboard follow what the user has made', function () {
+    $user = User::factory()->create();
+    $project = Project::factory()->for(Area::factory()->for($user->currentTeam))->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard', $user->currentTeam->slug))
+        ->assertInertia(fn (Assert $page) => $page->where('setup', ['hasProject' => true, 'hasTask' => false]));
+
+    Task::factory()->for($project)->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard', $user->currentTeam->slug))
+        ->assertInertia(fn (Assert $page) => $page->where('setup', ['hasProject' => true, 'hasTask' => true]));
 });
 
 test('moving a card saves the status and the board shows it after a reload', function () {

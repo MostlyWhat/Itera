@@ -23,16 +23,17 @@
     import ArrowLeft from 'carbon-icons-svelte/lib/ArrowLeft.svelte';
     import ArrowRight from 'carbon-icons-svelte/lib/ArrowRight.svelte';
     import Calendar from 'carbon-icons-svelte/lib/Calendar.svelte';
+    import CheckmarkFilled from 'carbon-icons-svelte/lib/CheckmarkFilled.svelte';
     import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
     import PendingInvitationsModal from '@/components/PendingInvitationsModal.svelte';
     import PointsMeter from '@/components/sprints/PointsMeter.svelte';
-    import WeekStrip from '@/components/sprints/WeekStrip.svelte';
     import { Button, buttonVariants } from '@/components/ui/button';
     import { formatShortDate, formatWeekRange } from '@/lib/dates';
     import { cn } from '@/lib/utils';
     import { update as updateStatus } from '@/routes/tasks/status';
+    import { index as projectsIndex } from '@/routes/projects';
     import { index as sprintsIndex, show as showSprint } from '@/routes/sprints';
     import type { DashboardInvitation } from '@/types';
 
@@ -65,9 +66,11 @@
     let {
         pendingInvitations = [],
         board = null,
+        setup = null,
     }: {
         pendingInvitations?: DashboardInvitation[];
         board?: Board | null;
+        setup?: { hasProject: boolean; hasTask: boolean } | null;
     } = $props();
 
     const team = $derived((page.props.currentTeam as Team).slug);
@@ -183,12 +186,10 @@
                     class={cn(buttonVariants({ variant: 'outline' }), 'gap-1.5')}
                 >
                     <Edit class="size-4" />
-                    Plan sprint
+                    Edit sprint
                 </Link>
             </div>
         </header>
-
-        <WeekStrip weekStart={board.sprint.weekStart} />
 
         <p class="sr-only" aria-live="polite">{announcement}</p>
 
@@ -215,7 +216,7 @@
                     <section
                         aria-labelledby={`column-${column.status}`}
                         class={cn(
-                            'flex min-h-48 flex-col rounded-xl border bg-muted/30 transition-colors',
+                            'flex flex-col rounded-xl border bg-muted/30 transition-colors md:min-h-48',
                             dropTarget === column.status
                                 ? 'border-primary bg-accent/60'
                                 : 'border-border',
@@ -302,7 +303,9 @@
                                             {/if}
                                         </span>
                                         <!-- Keyboard and touch alternative to drag and drop. -->
-                                        <span class="flex shrink-0 items-center gap-0.5">
+                                        <span
+                                            class="flex shrink-0 items-center gap-0.5 motion-safe:transition-opacity [@media(hover:hover)]:opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100"
+                                        >
                                             {#if columnIndex > 0}
                                                 <Button
                                                     variant="ghost"
@@ -341,31 +344,79 @@
             </div>
         {/if}
     {:else}
+        {@const steps = [
+            {
+                title: 'Create a project',
+                text: 'Group your work by class or job, then add a project such as a lab report.',
+                done: setup?.hasProject ?? false,
+                href: projectsIndex(team),
+                action: 'Open Projects',
+            },
+            {
+                title: 'Add tasks with story points',
+                text: 'Write down what the project needs. Points show how big each task is.',
+                done: setup?.hasTask ?? false,
+                href: projectsIndex(team),
+                action: 'Add tasks',
+            },
+            {
+                title: 'Plan this week',
+                text: 'Choose the tasks that fit this week. They show here as a board.',
+                done: false,
+                href: sprintsIndex(team),
+                action: 'Plan this week',
+            },
+        ]}
+        {@const next = steps.findIndex((step) => !step.done)}
         <header class="space-y-1">
             <h1 class="type-title">This week</h1>
             <p class="text-sm text-muted-foreground">
-                Your sprint board shows here when this week has a sprint.
+                No sprint yet. Three steps get you to your board.
             </p>
         </header>
-        <div
-            class="flex flex-col items-start gap-4 rounded-lg border border-dashed border-border px-6 py-10 sm:items-center sm:text-center"
-        >
-            <span
-                class="flex size-10 items-center justify-center rounded-md bg-accent text-accent-foreground"
-                aria-hidden="true"
-            >
-                <Calendar class="size-5" />
-            </span>
-            <div class="space-y-1">
-                <h2 class="type-section">No sprint this week</h2>
-                <p class="max-w-sm text-sm text-muted-foreground">
-                    Plan a sprint with a goal and the tasks that fit. Then
-                    track them here in To Do, In Progress, and Done.
-                </p>
-            </div>
-            <Link href={sprintsIndex(team)} class={buttonVariants()}>
-                Plan this week
-            </Link>
-        </div>
+        <ol class="max-w-xl overflow-hidden rounded-lg border border-border bg-card">
+            {#each steps as step, index (step.title)}
+                <li
+                    class={cn(
+                        'flex gap-4 border-t border-border px-4 py-4 first:border-t-0',
+                        index === next && 'bg-accent/40',
+                    )}
+                >
+                    <span
+                        class={cn(
+                            'flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium tabular-nums',
+                            step.done
+                                ? 'text-primary'
+                                : index === next
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'border border-border text-muted-foreground',
+                        )}
+                    >
+                        {#if step.done}
+                            <CheckmarkFilled class="size-6" />
+                            <span class="sr-only">Done:</span>
+                        {:else}
+                            {index + 1}
+                        {/if}
+                    </span>
+                    <div class="flex min-w-0 flex-1 flex-col gap-1">
+                        <h2
+                            class={cn(
+                                'text-sm font-medium',
+                                step.done && 'text-muted-foreground line-through decoration-muted-foreground/60',
+                            )}
+                        >
+                            {step.title}
+                        </h2>
+                        {#if index === next}
+                            <p class="text-sm text-muted-foreground">{step.text}</p>
+                            <Link href={step.href} class={cn(buttonVariants({ size: 'sm' }), 'mt-2 w-fit')}>
+                                {step.action}
+                            </Link>
+                        {/if}
+                    </div>
+                </li>
+            {/each}
+        </ol>
     {/if}
 </div>
