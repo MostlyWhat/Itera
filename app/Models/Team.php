@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Membership> $memberships
  * @property-read Collection<int, User> $members
  * @property-read Collection<int, Area> $areas
+ * @property-read Collection<int, Sprint> $sprints
  */
 #[Fillable(['name', 'slug', 'is_personal'])]
 class Team extends Model
@@ -104,6 +105,16 @@ class Team extends Model
     public function areas(): HasMany
     {
         return $this->hasMany(Area::class)->orderBy('position');
+    }
+
+    /**
+     * Get the Sprints of this team, newest week first.
+     *
+     * @return HasMany<Sprint, $this>
+     */
+    public function sprints(): HasMany
+    {
+        return $this->hasMany(Sprint::class)->orderByDesc('week_start');
     }
 
     /**

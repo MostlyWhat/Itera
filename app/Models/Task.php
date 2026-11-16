@@ -8,9 +8,11 @@ use Carbon\CarbonImmutable;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A piece of work inside a Project, for example "Write the method section".
@@ -26,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Project $project
+ * @property-read Collection<int, SprintCommitment> $commitments
  */
 #[Fillable(['title', 'status', 'story_points', 'due_date'])]
 class Task extends Model
@@ -65,6 +68,34 @@ class Task extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * Get the Sprints the Task was committed to, as commitment rows.
+     *
+     * @return HasMany<SprintCommitment, $this>
+     */
+    public function commitments(): HasMany
+    {
+        return $this->hasMany(SprintCommitment::class);
+    }
+
+    /**
+     * Scope the query to Tasks that a Sprint can take: Tasks that are not in
+     * any other current or upcoming Sprint. `$sprint` is the Sprint being
+     * planned, so its own Tasks stay in the result.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeAvailableForSprint(Builder $query, ?Sprint $sprint = null): void
+    {
+        $query->whereDoesntHave('commitments', function (Builder $commitments) use ($sprint) {
+            $commitments->whereHas('sprint', fn (Builder $sprints) => $sprints->currentOrUpcoming());
+
+            if ($sprint !== null) {
+                $commitments->where('sprint_id', '!=', $sprint->id);
+            }
+        });
     }
 
     /**
