@@ -117,3 +117,25 @@ test('users are rate limited', function () {
 
     $response->assertTooManyRequests();
 });
+
+// ITERA-01: the system shows an error when the sign-in information is not correct.
+test('users can not authenticate with an unknown email', function () {
+    $response = $this->from(route('login'))->post(route('login.store'), [
+        'email' => 'nobody@example.com',
+        'password' => 'password',
+    ]);
+
+    $response->assertRedirect(route('login'));
+    $response->assertSessionHasErrors('email');
+    $this->assertGuest();
+});
+
+test('users can not authenticate without an email or password', function () {
+    $response = $this->from(route('login'))->post(route('login.store'), [
+        'email' => '',
+        'password' => '',
+    ]);
+
+    $response->assertSessionHasErrors(['email', 'password']);
+    $this->assertGuest();
+});
