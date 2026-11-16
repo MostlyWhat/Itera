@@ -11,13 +11,16 @@
 <script lang="ts">
     import { Form } from '@inertiajs/svelte';
     import { tick } from 'svelte';
+    import DatePicker from '@/components/DatePicker.svelte';
     import InputError from '@/components/InputError.svelte';
     import { Button } from '@/components/ui/button';
     import { Input } from '@/components/ui/input';
     import {
-        NativeSelect,
-        NativeSelectOption,
-    } from '@/components/ui/native-select';
+        Select,
+        SelectContent,
+        SelectItem,
+        SelectTrigger,
+    } from '@/components/ui/select';
     import { Textarea } from '@/components/ui/textarea';
     import { cn } from '@/lib/utils';
 
@@ -63,6 +66,11 @@
     });
 
     const isEdit = $derived(task !== undefined);
+    // svelte-ignore state_referenced_locally
+    let status = $state(task?.status ?? 'todo');
+    const statusLabel = $derived(
+        statusOptions.find((option) => option.value === status)?.label ?? '',
+    );
     // Read once: the form opens with the field shown or hidden.
     // svelte-ignore state_referenced_locally
     let showDescription = $state(task !== undefined);
@@ -171,13 +179,14 @@
                     class="text-xs font-medium text-muted-foreground"
                     >Deadline</label
                 >
-                <Input
+                <DatePicker
                     id={`${id}-due`}
-                    type="date"
                     name="due_date"
-                    value={task?.dueDate ?? ''}
-                    aria-invalid={errors.due_date ? 'true' : undefined}
-                    class="h-9 w-40"
+                    value={task?.dueDate ?? null}
+                    placeholder="No deadline"
+                    clearLabel="Remove the deadline"
+                    invalid={Boolean(errors.due_date)}
+                    class="w-40"
                 />
                 <InputError message={errors.due_date} />
             </div>
@@ -189,18 +198,16 @@
                         class="text-xs font-medium text-muted-foreground"
                         >Status</label
                     >
-                    <NativeSelect
-                        id={`${id}-status`}
-                        name="status"
-                        value={task?.status}
-                        class="w-36"
-                    >
-                        {#each statusOptions as option (option.value)}
-                            <NativeSelectOption value={option.value}
-                                >{option.label}</NativeSelectOption
-                            >
-                        {/each}
-                    </NativeSelect>
+                    <Select type="single" name="status" bind:value={status}>
+                        <SelectTrigger id={`${id}-status`} class="w-36">
+                            {statusLabel}
+                        </SelectTrigger>
+                        <SelectContent>
+                            {#each statusOptions as option (option.value)}
+                                <SelectItem value={option.value} label={option.label} />
+                            {/each}
+                        </SelectContent>
+                    </Select>
                     <InputError message={errors.status} />
                 </div>
             {/if}

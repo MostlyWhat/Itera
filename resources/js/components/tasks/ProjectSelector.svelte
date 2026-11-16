@@ -14,10 +14,13 @@
 <script lang="ts">
     import { Link, router } from '@inertiajs/svelte';
     import {
-        NativeSelect,
-        NativeSelectOptGroup,
-        NativeSelectOption,
-    } from '@/components/ui/native-select';
+        Select,
+        SelectContent,
+        SelectGroup,
+        SelectGroupHeading,
+        SelectItem,
+        SelectTrigger,
+    } from '@/components/ui/select';
     import { cn } from '@/lib/utils';
     import { show } from '@/routes/projects';
 
@@ -34,29 +37,44 @@
     } = $props();
 
     const url = (id: number) => show({ current_team: team, project: id }).url;
+
+    const currentName = $derived(
+        navigation
+            .flatMap((area) => area.projects)
+            .find((project) => project.id === currentId)?.name ?? 'Project',
+    );
 </script>
 
 <div class="lg:hidden">
     <label for="project-select" class="sr-only">Project</label>
-    <NativeSelect
-        id="project-select"
+    <Select
+        type="single"
         value={String(currentId)}
-        class="w-full"
-        onchange={(event: Event) =>
-            router.visit(url(Number((event.target as HTMLSelectElement).value)))}
+        onValueChange={(value: string) => router.visit(url(Number(value)))}
     >
-        {#each navigation as area (area.id)}
-            <NativeSelectOptGroup label={area.name}>
-                {#each area.projects as project (project.id)}
-                    <NativeSelectOption value={String(project.id)}>
-                        {project.name}{project.overdueTasks > 0
-                            ? ` (${project.overdueTasks} overdue)`
-                            : ''}
-                    </NativeSelectOption>
-                {/each}
-            </NativeSelectOptGroup>
-        {/each}
-    </NativeSelect>
+        <SelectTrigger id="project-select" class="w-full">
+            <span class="truncate">{currentName}</span>
+        </SelectTrigger>
+        <SelectContent>
+            {#each navigation as area (area.id)}
+                <SelectGroup>
+                    <SelectGroupHeading>{area.name}</SelectGroupHeading>
+                    {#each area.projects as project (project.id)}
+                        <SelectItem value={String(project.id)} label={project.name}>
+                            {#snippet children()}
+                                {project.name}
+                                {#if project.overdueTasks > 0}
+                                    <span class="text-xs font-medium text-destructive"
+                                        >{project.overdueTasks} overdue</span
+                                    >
+                                {/if}
+                            {/snippet}
+                        </SelectItem>
+                    {/each}
+                </SelectGroup>
+            {/each}
+        </SelectContent>
+    </Select>
 </div>
 
 <nav aria-label="Projects" class="hidden lg:block">

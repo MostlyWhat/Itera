@@ -36,10 +36,13 @@
     import { Button } from '@/components/ui/button';
     import { Input } from '@/components/ui/input';
     import {
-        NativeSelect,
-        NativeSelectOptGroup,
-        NativeSelectOption,
-    } from '@/components/ui/native-select';
+        Select,
+        SelectContent,
+        SelectGroup,
+        SelectGroupHeading,
+        SelectItem,
+        SelectTrigger,
+    } from '@/components/ui/select';
     import { formatWeekRange, weekName } from '@/lib/dates';
     import { cn } from '@/lib/utils';
     import { update } from '@/routes/sprints';
@@ -128,6 +131,14 @@
 
         return [...byProject.entries()].map(([name, tasks]) => ({ name, tasks }));
     });
+
+    // The new-task form: the project stays for the next task, the points reset.
+    // svelte-ignore state_referenced_locally
+    let newProject = $state(projects[0] ? String(projects[0].id) : '');
+    let newPoints = $state('');
+    const newProjectName = $derived(
+        projects.find((project) => String(project.id) === newProject)?.name ?? 'Project',
+    );
 
     const projectGroups = $derived.by(() => {
         const byArea = new Map<string, typeof projects>();
@@ -258,7 +269,8 @@
                 <Form
                     {...storeSprintTask.form({ current_team: team, sprint: sprint.id })}
                     options={{ preserveScroll: true }}
-                    resetOnSuccess={['title', 'story_points']}
+                    resetOnSuccess={['title']}
+                    onSuccess={() => (newPoints = '')}
                     class="rounded-lg border border-dashed border-border p-3"
                 >
                     {#snippet children({ errors: formErrors, processing })}
@@ -282,30 +294,48 @@
                                 />
                                 <div class="flex flex-wrap items-center gap-2">
                                     <label for="new-task-project" class="sr-only">Project</label>
-                                    <NativeSelect
-                                        id="new-task-project"
-                                        name="project_id"
-                                        class="min-w-0 flex-1 basis-40"
-                                    >
-                                        {#each projectGroups as [areaName, areaProjects] (areaName)}
-                                            <NativeSelectOptGroup label={areaName}>
-                                                {#each areaProjects as project (project.id)}
-                                                    <NativeSelectOption value={String(project.id)}
-                                                        >{project.name}</NativeSelectOption
-                                                    >
-                                                {/each}
-                                            </NativeSelectOptGroup>
-                                        {/each}
-                                    </NativeSelect>
+                                    <Select type="single" name="project_id" bind:value={newProject}>
+                                        <SelectTrigger
+                                            id="new-task-project"
+                                            class="w-auto min-w-0 flex-1 basis-40"
+                                        >
+                                            <span class="truncate">{newProjectName}</span>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {#each projectGroups as [areaName, areaProjects] (areaName)}
+                                                <SelectGroup>
+                                                    <SelectGroupHeading>{areaName}</SelectGroupHeading>
+                                                    {#each areaProjects as project (project.id)}
+                                                        <SelectItem
+                                                            value={String(project.id)}
+                                                            label={project.name}
+                                                        />
+                                                    {/each}
+                                                </SelectGroup>
+                                            {/each}
+                                        </SelectContent>
+                                    </Select>
                                     <label for="new-task-points" class="sr-only">Story points</label>
-                                    <NativeSelect id="new-task-points" name="story_points" class="w-28">
-                                        <NativeSelectOption value="">– pts</NativeSelectOption>
-                                        {#each storyPointOptions as points (points)}
-                                            <NativeSelectOption value={String(points)}
-                                                >{points} pts</NativeSelectOption
-                                            >
-                                        {/each}
-                                    </NativeSelect>
+                                    <Select type="single" name="story_points" bind:value={newPoints}>
+                                        <SelectTrigger
+                                            id="new-task-points"
+                                            class={cn(
+                                                'w-28 tabular-nums',
+                                                newPoints === '' && 'text-muted-foreground',
+                                            )}
+                                        >
+                                            {newPoints === '' ? '– pts' : `${newPoints} pts`}
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="" label="No points" />
+                                            {#each storyPointOptions as points (points)}
+                                                <SelectItem
+                                                    value={String(points)}
+                                                    label={`${points} pts`}
+                                                />
+                                            {/each}
+                                        </SelectContent>
+                                    </Select>
                                     <Button type="submit" disabled={processing}>
                                         <Add class="size-4" />
                                         Add
