@@ -56,12 +56,14 @@ class TaskController extends Controller
             'project' => [
                 'id' => $project->id,
                 'name' => $project->name,
+                'description' => $project->description,
                 'areaName' => $project->area->name,
                 'archived' => $project->isArchived() || $project->area->isArchived(),
             ],
             'tasks' => $tasks->map(fn (Task $task) => [
                 'id' => $task->id,
                 'title' => $task->title,
+                'description' => $task->description,
                 'status' => $task->status->value,
                 'statusLabel' => $task->status->label(),
                 'storyPoints' => $task->story_points?->value,
@@ -126,7 +128,7 @@ class TaskController extends Controller
     }
 
     /**
-     * Edit a Task: title, story points, deadline, or status.
+     * Edit a Task: title, description, story points, deadline, or status.
      */
     public function update(SaveTaskRequest $request, Task $task): RedirectResponse
     {

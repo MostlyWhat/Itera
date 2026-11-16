@@ -26,7 +26,7 @@ use Illuminate\Support\Carbon;
  * @property-read Area $area
  * @property-read Collection<int, Task> $tasks
  */
-#[Fillable(['name'])]
+#[Fillable(['name', 'description'])]
 class Project extends Model
 {
     /** @use HasFactory<ProjectFactory> */

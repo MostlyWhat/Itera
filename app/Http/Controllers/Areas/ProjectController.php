@@ -37,7 +37,7 @@ class ProjectController extends Controller
     }
 
     /**
-     * Rename a Project.
+     * Rename a Project or change its description.
      */
     public function update(SaveProjectRequest $request, Project $project): RedirectResponse
     {
@@ -45,7 +45,7 @@ class ProjectController extends Controller
 
         $project->update($request->validated());
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Project renamed.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Project saved.')]);
 
         return back();
     }

@@ -98,3 +98,41 @@ test('users cannot change the projects of another user', function () {
         ->and($otherProject->fresh()->isArchived())->toBeFalse()
         ->and($otherArea->projects()->count())->toBe(1);
 });
+
+test('users can give their project a description', function () {
+    $user = User::factory()->create();
+    $project = Project::factory()->for(Area::factory()->for($user->currentTeam))->create();
+
+    $this->actingAs($user)
+        ->patch(route('projects.update', [$user->currentTeam->slug, $project]), [
+            'name' => 'Lab report',
+            'description' => '  Biology 101, due in week 12.  ',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($project->fresh()->description)->toBe('Biology 101, due in week 12.');
+});
+
+test('a rename without a description keeps the description', function () {
+    $user = User::factory()->create();
+    $project = Project::factory()->for(Area::factory()->for($user->currentTeam))->create(['description' => 'Biology 101']);
+
+    $this->actingAs($user)
+        ->patch(route('projects.update', [$user->currentTeam->slug, $project]), ['name' => 'Lab report'])
+        ->assertSessionHasNoErrors();
+
+    expect($project->fresh()->description)->toBe('Biology 101');
+});
+
+test('an empty description removes it, and a long one is rejected', function () {
+    $user = User::factory()->create();
+    $project = Project::factory()->for(Area::factory()->for($user->currentTeam))->create(['description' => 'Biology 101']);
+    $url = route('projects.update', [$user->currentTeam->slug, $project]);
+
+    $this->actingAs($user)->patch($url, ['name' => 'Lab report', 'description' => ' ']);
+    expect($project->fresh()->description)->toBeNull();
+
+    $this->actingAs($user)
+        ->patch($url, ['name' => 'Lab report', 'description' => str_repeat('a', 2001)])
+        ->assertSessionHasErrors('description');
+});

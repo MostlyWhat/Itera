@@ -256,3 +256,36 @@ test('the project page lists all active projects for the selector', function () 
             ->where('navigation.0.projects.1.name', 'Midterm review')
             ->where('navigation.0.projects.1.overdueTasks', 1));
 });
+
+test('users can give a task a description, and the project page shows it', function () {
+    [$user, $project, $slug] = userWithProject();
+    $project->update(['description' => 'Biology 101']);
+
+    $this->actingAs($user)
+        ->post(route('tasks.store', [$slug, $project]), [
+            'title' => 'Write the method section',
+            'description' => 'Use the template from week 3.',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($user)
+        ->get(route('projects.show', [$slug, $project]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('project.description', 'Biology 101')
+            ->where('tasks.0.description', 'Use the template from week 3.'));
+});
+
+test('an edit without a description keeps the description of the task', function () {
+    [$user, $project, $slug] = userWithProject();
+    $task = Task::factory()->for($project)->create(['description' => 'Use the template.']);
+
+    $this->actingAs($user)
+        ->patch(route('tasks.update', [$slug, $task]), ['title' => 'New title'])
+        ->assertSessionHasNoErrors();
+
+    expect($task->fresh()->description)->toBe('Use the template.');
+
+    $this->actingAs($user)
+        ->patch(route('tasks.update', [$slug, $task]), ['title' => 'New title', 'description' => str_repeat('a', 2001)])
+        ->assertSessionHasErrors('description');
+});

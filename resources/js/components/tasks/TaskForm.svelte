@@ -1,6 +1,7 @@
 <script module lang="ts">
     export type TaskFields = {
         title: string;
+        description?: string | null;
         storyPoints: number | null;
         dueDate: string | null;
         status?: string;
@@ -9,6 +10,7 @@
 
 <script lang="ts">
     import { Form } from '@inertiajs/svelte';
+    import { tick } from 'svelte';
     import InputError from '@/components/InputError.svelte';
     import { Button } from '@/components/ui/button';
     import { Input } from '@/components/ui/input';
@@ -16,10 +18,12 @@
         NativeSelect,
         NativeSelectOption,
     } from '@/components/ui/native-select';
+    import { Textarea } from '@/components/ui/textarea';
     import { cn } from '@/lib/utils';
 
     // Create a Task (no `task`) or edit one. Story points are a radio group
-    // with the allowed values. The deadline is a native date field.
+    // with the allowed values. The description is optional, so the create
+    // form shows it only on request.
     let {
         action,
         task,
@@ -42,6 +46,13 @@
 
     const id = $props.id();
     let titleInput = $state<HTMLInputElement | null>(null);
+    let descriptionInput = $state<HTMLTextAreaElement | null>(null);
+
+    const openDescription = async () => {
+        showDescription = true;
+        await tick();
+        descriptionInput?.focus();
+    };
 
     $effect(() => {
         if (focus && titleInput) {
@@ -52,6 +63,9 @@
     });
 
     const isEdit = $derived(task !== undefined);
+    // Read once: the form opens with the field shown or hidden.
+    // svelte-ignore state_referenced_locally
+    let showDescription = $state(task !== undefined);
     const pointChoices = $derived<(number | null)[]>([null, ...pointOptions]);
 </script>
 
@@ -84,6 +98,36 @@
             />
             <InputError message={errors.title} />
         </div>
+
+        {#if showDescription}
+            <div class="flex flex-col gap-1.5">
+                <label
+                    for={`${id}-description`}
+                    class="text-xs font-medium text-muted-foreground"
+                    >Description</label
+                >
+                <Textarea
+                    id={`${id}-description`}
+                    bind:ref={descriptionInput}
+                    name="description"
+                    value={task?.description ?? ''}
+                    placeholder="Notes, links, or what done looks like"
+                    maxlength={2000}
+                    rows={2}
+                    aria-invalid={errors.description ? 'true' : undefined}
+                    class="max-h-60 min-h-16"
+                />
+                <InputError message={errors.description} />
+            </div>
+        {:else}
+            <button
+                type="button"
+                class="w-fit text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:underline focus-visible:outline-none"
+                onclick={openDescription}
+            >
+                Add a description
+            </button>
+        {/if}
 
         <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
             <fieldset class="flex flex-col gap-1.5">

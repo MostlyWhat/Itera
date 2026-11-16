@@ -30,7 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read Project $project
  * @property-read Collection<int, SprintCommitment> $commitments
  */
-#[Fillable(['title', 'status', 'story_points', 'due_date'])]
+#[Fillable(['title', 'description', 'status', 'story_points', 'due_date'])]
 class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */

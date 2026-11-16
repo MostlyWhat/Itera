@@ -34,6 +34,7 @@
     import TrashCan from 'carbon-icons-svelte/lib/TrashCan.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
+    import ProjectForm from '@/components/projects/ProjectForm.svelte';
     import ProjectSelector, {
         type NavigationArea,
     } from '@/components/tasks/ProjectSelector.svelte';
@@ -58,15 +59,18 @@
     } from '@/components/ui/dropdown-menu';
     import { cn } from '@/lib/utils';
     import { index as areasIndex } from '@/routes/areas';
+    import { update as updateProject } from '@/routes/projects';
     import {
         destroy as destroyTask,
         store as storeTask,
         update as updateTask,
     } from '@/routes/tasks';
+    import { update as updateStatus } from '@/routes/tasks/status';
 
     type TaskItem = {
         id: number;
         title: string;
+        description: string | null;
         status: 'todo' | 'in_progress' | 'done';
         statusLabel: string;
         storyPoints: number | null;
@@ -85,6 +89,7 @@
         project: {
             id: number;
             name: string;
+            description: string | null;
             areaName: string;
             archived: boolean;
         };
@@ -96,6 +101,7 @@
     const team = $derived((page.props.currentTeam as Team).slug);
 
     let editing = $state<number | null>(null);
+    let editingProject = $state(false);
     let deleting = $state<TaskItem | null>(null);
 
     const openTasks = $derived(tasks.filter((task) => task.status !== 'done'));
@@ -115,16 +121,11 @@
             day: 'numeric',
         });
 
-    // Mark a Task done, or open it again. The other fields stay the same.
+    // Mark a Task done, or open it again. Only the status changes.
     const toggleDone = (task: TaskItem) => {
         router.patch(
-            updateTask({ current_team: team, task: task.id }).url,
-            {
-                title: task.title,
-                story_points: task.storyPoints ?? '',
-                due_date: task.dueDate ?? '',
-                status: task.status === 'done' ? 'todo' : 'done',
-            },
+            updateStatus({ current_team: team, task: task.id }).url,
+            { status: task.status === 'done' ? 'todo' : 'done' },
             { preserveScroll: true },
         );
     };
@@ -189,22 +190,27 @@
                     {/if}
                 </button>
 
-                <div class="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-                    <span
-                        class={cn(
-                            'min-w-0 truncate text-sm',
-                            task.status === 'done' &&
-                                'text-muted-foreground line-through decoration-muted-foreground/60',
-                        )}
-                    >
-                        {task.title}
-                    </span>
-                    {#if task.status === 'in_progress'}
+                <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <div class="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
                         <span
-                            class="w-fit shrink-0 rounded-sm bg-accent px-1.5 py-0.5 text-[11px] font-medium text-accent-foreground"
+                            class={cn(
+                                'min-w-0 truncate text-sm',
+                                task.status === 'done' &&
+                                    'text-muted-foreground line-through decoration-muted-foreground/60',
+                            )}
                         >
-                            In progress
+                            {task.title}
                         </span>
+                        {#if task.status === 'in_progress'}
+                            <span
+                                class="w-fit shrink-0 rounded-sm bg-accent px-1.5 py-0.5 text-[11px] font-medium text-accent-foreground"
+                            >
+                                In progress
+                            </span>
+                        {/if}
+                    </div>
+                    {#if task.description}
+                        <p class="line-clamp-2 text-xs whitespace-pre-line text-muted-foreground">{task.description}</p>
                     {/if}
                 </div>
 
@@ -290,7 +296,35 @@
         <p class="text-xs font-medium text-muted-foreground">
             {project.areaName}
         </p>
-        <h1 class="type-title">{project.name}</h1>
+        {#if editingProject}
+            <div class="rounded-lg border border-border bg-card p-4">
+                <ProjectForm
+                    action={updateProject.form({ current_team: team, project: project.id })}
+                    name={project.name}
+                    description={project.description}
+                    onDone={() => (editingProject = false)}
+                    onCancel={() => (editingProject = false)}
+                />
+            </div>
+        {:else}
+            <div class="flex items-start justify-between gap-4">
+                <h1 class="type-title min-w-0 break-words">{project.name}</h1>
+                {#if !project.archived}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        class="shrink-0 gap-1.5 text-muted-foreground hover:text-foreground"
+                        onclick={() => (editingProject = true)}
+                    >
+                        <Edit class="size-4" />
+                        Edit project
+                    </Button>
+                {/if}
+            </div>
+            {#if project.description}
+                <p class="max-w-prose text-sm whitespace-pre-line text-foreground/80">{project.description}</p>
+            {/if}
+        {/if}
         <p class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground tabular-nums">
             <span>{openTasks.length} open {openTasks.length === 1 ? 'task' : 'tasks'}</span>
             <span>{openPoints} open points</span>

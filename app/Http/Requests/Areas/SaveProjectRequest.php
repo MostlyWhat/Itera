@@ -6,7 +6,8 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validate the name of a new or renamed Project.
+ * Validate the name and the optional description of a Project. A form that
+ * sends only the name keeps the current description.
  */
 class SaveProjectRequest extends FormRequest
 {
@@ -19,6 +20,7 @@ class SaveProjectRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:100'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ];
     }
 
@@ -28,5 +30,10 @@ class SaveProjectRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge(['name' => trim((string) $this->input('name'))]);
+
+        if ($this->has('description')) {
+            $description = trim((string) $this->input('description'));
+            $this->merge(['description' => $description === '' ? null : $description]);
+        }
     }
 }
