@@ -3,6 +3,7 @@
     import InputError from '@/components/InputError.svelte';
     import { Button } from '@/components/ui/button';
     import { Input } from '@/components/ui/input';
+    import { cn } from '@/lib/utils';
 
     // A one-field form for the name of an Area or a Project. It creates a
     // new record (empty `value`) or renames one (`value` is the current name).
@@ -12,7 +13,8 @@
         label,
         placeholder = '',
         submitLabel,
-        autofocus = false,
+        focus = false,
+        class: className = '',
         onDone,
         onCancel,
     }: {
@@ -21,42 +23,57 @@
         label: string;
         placeholder?: string;
         submitLabel: string;
-        autofocus?: boolean;
+        focus?: boolean;
+        class?: string;
         onDone?: () => void;
         onCancel?: () => void;
     } = $props();
 
-    const isCreate = $derived(value === '');
+    const id = $props.id();
+    let input = $state<HTMLInputElement | null>(null);
+
+    // Focus after the next frame, so a closing menu does not take the focus back.
+    $effect(() => {
+        if (focus && input) {
+            const frame = requestAnimationFrame(() => {
+                input?.focus();
+                input?.select();
+            });
+
+            return () => cancelAnimationFrame(frame);
+        }
+    });
 </script>
 
 <Form
     {...action}
-    class="flex flex-col gap-1.5"
+    class={cn('flex w-full flex-col gap-1.5', className)}
     options={{ preserveScroll: true }}
-    resetOnSuccess={isCreate}
+    resetOnSuccess={value === ''}
     onSuccess={() => onDone?.()}
 >
     {#snippet children({ errors, processing })}
-        <div class="flex items-center gap-2">
-            <label class="sr-only" for={`name-${label}`}>{label}</label>
-            <!-- svelte-ignore a11y_autofocus -->
+        <div class="flex w-full flex-wrap items-center gap-2">
+            <label class="sr-only" for={id}>{label}</label>
             <Input
-                id={`name-${label}`}
+                {id}
+                bind:ref={input}
                 name="name"
                 {value}
                 {placeholder}
-                {autofocus}
                 maxlength={100}
                 required
+                autocomplete="off"
                 aria-invalid={errors.name ? 'true' : undefined}
-                class="h-9 max-w-sm"
+                aria-describedby={errors.name ? `${id}-error` : undefined}
+                class="h-9 min-w-0 flex-1 sm:max-w-sm"
                 onkeydown={(event: KeyboardEvent) => {
                     if (event.key === 'Escape') {
                         onCancel?.();
                     }
                 }}
             />
-            <Button type="submit" size="sm" disabled={processing}>
+            <Button type="submit" size="sm" class="h-9" disabled={processing}>
                 {submitLabel}
             </Button>
             {#if onCancel}
@@ -64,12 +81,15 @@
                     type="button"
                     size="sm"
                     variant="ghost"
+                    class="h-9"
                     onclick={() => onCancel?.()}
                 >
                     Cancel
                 </Button>
             {/if}
         </div>
-        <InputError message={errors.name} />
+        <div id={`${id}-error`}>
+            <InputError message={errors.name} />
+        </div>
     {/snippet}
 </Form>
