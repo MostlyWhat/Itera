@@ -31,7 +31,7 @@ test('the areas page lists active and archived areas of the current team', funct
         ->get(route('areas.index', $team->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('areas/Index', false)
+            ->component('areas/Index')
             ->has('areas', 1)
             ->where('areas.0.name', 'Biology 201')
             ->has('areas.0.projects', 1)

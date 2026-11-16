@@ -2,6 +2,7 @@
     import { Link, page } from '@inertiajs/svelte';
     import Book from 'carbon-icons-svelte/lib/Book.svelte';
     import LogoGithub from 'carbon-icons-svelte/lib/LogoGithub.svelte';
+    import Folders from 'carbon-icons-svelte/lib/Folders.svelte';
     import Grid from 'carbon-icons-svelte/lib/Grid.svelte';
     import Menu from 'carbon-icons-svelte/lib/Menu.svelte';
     import AppLogo from '@/components/AppLogo.svelte';
@@ -43,6 +44,7 @@
     import { getInitials } from '@/lib/initials';
     import { toUrl } from '@/lib/utils';
     import { dashboard } from '@/routes';
+    import { index as areasIndex } from '@/routes/areas';
     import type { BreadcrumbItem, NavItem, Team } from '@/types';
 
     let {
@@ -68,6 +70,15 @@
             href: dashboardUrl,
             icon: Grid,
         },
+        ...(currentTeam
+            ? [
+                  {
+                      title: 'Areas',
+                      href: areasIndex(currentTeam.slug),
+                      icon: Folders,
+                  },
+              ]
+            : []),
     ]);
 
     const rightNavItems: NavItem[] = [

@@ -2,6 +2,7 @@
     import { Link, page } from '@inertiajs/svelte';
     import Book from 'carbon-icons-svelte/lib/Book.svelte';
     import LogoGithub from 'carbon-icons-svelte/lib/LogoGithub.svelte';
+    import Folders from 'carbon-icons-svelte/lib/Folders.svelte';
     import Grid from 'carbon-icons-svelte/lib/Grid.svelte';
     import type { Snippet } from 'svelte';
     import AppLogo from '@/components/AppLogo.svelte';
@@ -19,6 +20,7 @@
         SidebarMenuItem,
     } from '@/components/ui/sidebar';
     import { dashboard } from '@/routes';
+    import { index as areasIndex } from '@/routes/areas';
     import type { NavItem, Team } from '@/types';
 
     let {
@@ -38,6 +40,15 @@
             href: dashboardUrl,
             icon: Grid,
         },
+        ...(currentTeam
+            ? [
+                  {
+                      title: 'Areas',
+                      href: areasIndex(currentTeam.slug),
+                      icon: Folders,
+                  },
+              ]
+            : []),
     ]);
 
     const footerNavItems: NavItem[] = [
