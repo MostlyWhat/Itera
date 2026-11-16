@@ -76,6 +76,7 @@
     --color-chart-2: var(--chart-2);
     --color-chart-3: var(--chart-3);
     --color-chart-4: var(--chart-4);
+    --color-warning: var(--warning);
     --color-chart-5: var(--chart-5);
 
     --color-sidebar: var(--sidebar);
@@ -122,6 +123,8 @@
     --chart-2: oklch(0.604 0.177 259.8);
     --chart-3: oklch(0.78 0.1 256);
     --chart-4: oklch(0.769 0.16 70);
+    /* Amber for text and marks that warn, for example a sprint over its target. */
+    --warning: oklch(0.52 0.14 60);
     --chart-5: oklch(0.542 0.005 91.5);
 
     --sidebar: oklch(0.985 0.002 106.4);
@@ -161,6 +164,7 @@
     --chart-2: oklch(0.75 0.12 256);
     --chart-3: oklch(0.45 0.16 260);
     --chart-4: oklch(0.8 0.15 75);
+    --warning: oklch(0.8 0.15 75);
     --chart-5: oklch(0.705 0.009 98.9);
 
     --sidebar: oklch(0.175 0.001 106.6);

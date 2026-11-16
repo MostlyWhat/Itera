@@ -186,7 +186,7 @@ test('the sprints page lists sprints and the free weeks', function () {
         ->get(route('sprints.index', $slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('sprints/Index', false)
+            ->component('sprints/Index')
             ->has('sprints', 2)
             ->where('sprints.0.timing', 'current')
             ->where('sprints.1.timing', 'past')
@@ -202,7 +202,7 @@ test('the sprint page shows the plan and marks tasks that another sprint has', f
     $this->actingAs($user)
         ->get(route('sprints.show', [$slug, $next]))
         ->assertInertia(fn (Assert $page) => $page
-            ->component('sprints/Show', false)
+            ->component('sprints/Show')
             ->where('sprint.timing', 'upcoming')
             ->where('sprint.editable', true)
             ->has('candidates', 2)

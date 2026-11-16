@@ -3,6 +3,7 @@
     import Book from 'carbon-icons-svelte/lib/Book.svelte';
     import LogoGithub from 'carbon-icons-svelte/lib/LogoGithub.svelte';
     import Folders from 'carbon-icons-svelte/lib/Folders.svelte';
+    import Calendar from 'carbon-icons-svelte/lib/Calendar.svelte';
     import Grid from 'carbon-icons-svelte/lib/Grid.svelte';
     import ListChecked from 'carbon-icons-svelte/lib/ListChecked.svelte';
     import Menu from 'carbon-icons-svelte/lib/Menu.svelte';
@@ -47,6 +48,7 @@
     import { dashboard } from '@/routes';
     import { index as areasIndex } from '@/routes/areas';
     import { index as projectsIndex } from '@/routes/projects';
+    import { index as sprintsIndex } from '@/routes/sprints';
     import type { BreadcrumbItem, NavItem, Team } from '@/types';
 
     let {
@@ -83,6 +85,11 @@
                       title: 'Projects',
                       href: projectsIndex(currentTeam.slug),
                       icon: ListChecked,
+                  },
+                  {
+                      title: 'Sprints',
+                      href: sprintsIndex(currentTeam.slug),
+                      icon: Calendar,
                   },
               ]
             : []),
