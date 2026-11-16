@@ -4,6 +4,7 @@
     import LogoGithub from 'carbon-icons-svelte/lib/LogoGithub.svelte';
     import Folders from 'carbon-icons-svelte/lib/Folders.svelte';
     import Grid from 'carbon-icons-svelte/lib/Grid.svelte';
+    import ListChecked from 'carbon-icons-svelte/lib/ListChecked.svelte';
     import type { Snippet } from 'svelte';
     import AppLogo from '@/components/AppLogo.svelte';
     import NavFooter from '@/components/NavFooter.svelte';
@@ -21,6 +22,7 @@
     } from '@/components/ui/sidebar';
     import { dashboard } from '@/routes';
     import { index as areasIndex } from '@/routes/areas';
+    import { index as projectsIndex } from '@/routes/projects';
     import type { NavItem, Team } from '@/types';
 
     let {
@@ -46,6 +48,11 @@
                       title: 'Areas',
                       href: areasIndex(currentTeam.slug),
                       icon: Folders,
+                  },
+                  {
+                      title: 'Projects',
+                      href: projectsIndex(currentTeam.slug),
+                      icon: ListChecked,
                   },
               ]
             : []),

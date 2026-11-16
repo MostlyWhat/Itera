@@ -13,11 +13,12 @@
 </script>
 
 <script lang="ts">
-    import { page, router } from '@inertiajs/svelte';
+    import { Link, page, router } from '@inertiajs/svelte';
     import Add from 'carbon-icons-svelte/lib/Add.svelte';
     import ChevronRight from 'carbon-icons-svelte/lib/ChevronRight.svelte';
     import Folders from 'carbon-icons-svelte/lib/Folders.svelte';
     import Undo from 'carbon-icons-svelte/lib/Undo.svelte';
+    import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
     import NameForm from '@/components/areas/NameForm.svelte';
     import RowActions from '@/components/areas/RowActions.svelte';
@@ -31,11 +32,17 @@
     import {
         archive as archiveProject,
         store as storeProject,
+        show as showProject,
         unarchive as unarchiveProject,
         update as updateProject,
     } from '@/routes/projects';
 
-    type ProjectItem = { id: number; name: string };
+    type ProjectItem = {
+        id: number;
+        name: string;
+        openTasks: number;
+        overdueTasks: number;
+    };
     type AreaItem = { id: number; name: string; projects: ProjectItem[] };
 
     let {
@@ -213,9 +220,35 @@
                                     onCancel={close}
                                 />
                             {:else}
-                                <span class="truncate text-sm"
-                                    >{project.name}</span
+                                <Link
+                                    href={showProject({
+                                        current_team: team,
+                                        project: project.id,
+                                    })}
+                                    class="flex min-w-0 flex-1 items-center gap-3 self-stretch rounded-sm text-sm focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                                 >
+                                    <span
+                                        class="truncate font-medium underline-offset-4 hover:underline"
+                                        >{project.name}</span
+                                    >
+                                    <span
+                                        class="flex shrink-0 items-center gap-3 text-xs text-muted-foreground tabular-nums"
+                                    >
+                                        <span
+                                            >{project.openTasks} open</span
+                                        >
+                                        {#if project.overdueTasks > 0}
+                                            <span
+                                                class="flex items-center gap-1 font-medium text-destructive"
+                                            >
+                                                <WarningAltFilled
+                                                    class="size-3.5"
+                                                />
+                                                {project.overdueTasks} overdue
+                                            </span>
+                                        {/if}
+                                    </span>
+                                </Link>
                                 <RowActions
                                     label={project.name}
                                     onRename={() =>

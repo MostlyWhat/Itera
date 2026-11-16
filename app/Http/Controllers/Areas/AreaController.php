@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Areas;
 
+use App\Enums\TaskStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Areas\SaveAreaRequest;
 use App\Models\Area;
@@ -27,7 +28,10 @@ class AreaController extends Controller
         $team = $request->user()->currentTeam;
 
         $areas = $team->areas()
-            ->with('projects')
+            ->with(['projects' => fn ($query) => $query->withCount([
+                'tasks as open_tasks_count' => fn ($tasks) => $tasks->where('status', '!=', TaskStatus::Done->value),
+                'tasks as overdue_tasks_count' => fn ($tasks) => $tasks->overdue(),
+            ])])
             ->get();
 
         $active = $areas->filter(fn (Area $area) => ! $area->isArchived());
@@ -42,6 +46,8 @@ class AreaController extends Controller
                     ->map(fn (Project $project) => [
                         'id' => $project->id,
                         'name' => $project->name,
+                        'openTasks' => (int) $project->getAttribute('open_tasks_count'),
+                        'overdueTasks' => (int) $project->getAttribute('overdue_tasks_count'),
                     ]),
             ]),
             'archivedAreas' => $areas
