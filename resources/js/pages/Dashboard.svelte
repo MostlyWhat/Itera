@@ -258,8 +258,8 @@
                                         >
                                     </div>
                                     <div class="flex items-center justify-between gap-2">
-                                        <span class="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                                            <span class="truncate">{card.projectName}</span>
+                                        <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                            <span class="wrap-break-word">{card.projectName}</span>
                                             {#if card.dueDate && card.status !== 'done'}
                                                 <span
                                                     class={cn(

@@ -24,6 +24,7 @@
 
 <script lang="ts">
     import { Link, page, router } from '@inertiajs/svelte';
+    import { SvelteSet } from 'svelte/reactivity';
     import Add from 'carbon-icons-svelte/lib/Add.svelte';
     import Calendar from 'carbon-icons-svelte/lib/Calendar.svelte';
     import Checkmark from 'carbon-icons-svelte/lib/Checkmark.svelte';
@@ -102,6 +103,16 @@
 
     let editing = $state<number | null>(null);
     let editingProject = $state(false);
+
+    // Descriptions show two lines. A click on the text shows all of it.
+    const expanded = new SvelteSet<number>();
+    const toggleDescription = (id: number) => {
+        if (expanded.has(id)) {
+            expanded.delete(id);
+        } else {
+            expanded.add(id);
+        }
+    };
     let deleting = $state<TaskItem | null>(null);
 
     const openTasks = $derived(tasks.filter((task) => task.status !== 'done'));
@@ -194,7 +205,7 @@
                     <div class="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
                         <span
                             class={cn(
-                                'min-w-0 truncate text-sm',
+                                'min-w-0 text-sm wrap-break-word',
                                 task.status === 'done' &&
                                     'text-muted-foreground line-through decoration-muted-foreground/60',
                             )}
@@ -210,7 +221,15 @@
                         {/if}
                     </div>
                     {#if task.description}
-                        <p class="line-clamp-2 text-xs whitespace-pre-line text-muted-foreground">{task.description}</p>
+                        <button
+                            type="button"
+                            aria-expanded={expanded.has(task.id)}
+                            onclick={() => toggleDescription(task.id)}
+                            class={cn(
+                                'rounded-sm text-start text-xs whitespace-pre-line text-muted-foreground wrap-break-word hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
+                                !expanded.has(task.id) && 'line-clamp-2',
+                            )}
+                        >{task.description}</button>
                     {/if}
                 </div>
 
@@ -399,7 +418,7 @@
                     class="flex w-fit cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden"
                 >
                     <ChevronRight
-                        class="size-4 transition-transform group-open:rotate-90"
+                        class="size-4 group-open:rotate-90 motion-safe:transition-transform"
                     />
                     Done
                     <span class="tabular-nums">({doneTasks.length})</span>
@@ -433,7 +452,7 @@
         <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-                class="bg-destructive text-white hover:bg-destructive/90"
+                class="bg-destructive-solid text-white hover:brightness-95"
                 onclick={confirmDelete}
             >
                 Delete task

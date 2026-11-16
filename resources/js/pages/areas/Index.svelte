@@ -165,7 +165,7 @@
                         <div class="flex min-w-0 items-baseline gap-3">
                             <h2
                                 id={`area-${area.id}`}
-                                class="truncate text-base font-semibold tracking-[-0.01em]"
+                                class="wrap-break-word text-base font-semibold tracking-[-0.01em]"
                             >
                                 {area.name}
                             </h2>
@@ -228,7 +228,7 @@
                                     class="flex min-w-0 flex-1 items-center gap-3 self-stretch rounded-sm text-sm focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                                 >
                                     <span
-                                        class="truncate font-medium underline-offset-4 hover:underline"
+                                        class="wrap-break-word font-medium underline-offset-4 hover:underline"
                                         >{project.name}</span
                                     >
                                     <span
@@ -304,7 +304,7 @@
                 class="flex w-fit cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden"
             >
                 <ChevronRight
-                    class="size-4 transition-transform group-open:rotate-90"
+                    class="size-4 group-open:rotate-90 motion-safe:transition-transform"
                 />
                 Archived
                 <span class="tabular-nums">({archivedCount})</span>
@@ -316,7 +316,7 @@
                     <li
                         class="flex min-h-11 items-center justify-between gap-2 border-t border-border px-4 py-1 first:border-t-0"
                     >
-                        <span class="min-w-0 truncate text-sm">
+                        <span class="min-w-0 wrap-break-word text-sm">
                             {area.name}
                             <span class="text-muted-foreground">· Area</span>
                         </span>
@@ -341,7 +341,7 @@
                     <li
                         class="flex min-h-11 items-center justify-between gap-2 border-t border-border px-4 py-1 first:border-t-0"
                     >
-                        <span class="min-w-0 truncate text-sm">
+                        <span class="min-w-0 wrap-break-word text-sm">
                             {project.name}
                             <span class="text-muted-foreground"
                                 >· Project in {project.areaName}</span

@@ -82,7 +82,7 @@
         {#each navigation as area (area.id)}
             <div>
                 <h2
-                    class="mb-1.5 truncate px-2 text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase"
+                    class="mb-1.5 wrap-break-word px-2 text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase"
                 >
                     {area.name}
                 </h2>
@@ -101,7 +101,7 @@
                                         : 'text-foreground/80 hover:bg-muted hover:text-foreground',
                                 )}
                             >
-                                <span class="min-w-0 flex-1 truncate"
+                                <span class="min-w-0 flex-1 wrap-break-word"
                                     >{project.name}</span
                                 >
                                 {#if project.overdueTasks > 0}

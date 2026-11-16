@@ -200,7 +200,7 @@
                             <span class="flex min-w-0 flex-col">
                                 <span
                                     class={cn(
-                                        'truncate text-sm',
+                                        'wrap-break-word text-sm',
                                         !sprint.goal && 'text-muted-foreground',
                                     )}>{sprint.goal ?? 'No goal yet'}</span
                                 >

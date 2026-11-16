@@ -365,9 +365,9 @@
                                 class="flex min-h-12 items-center gap-3 border-t border-border py-2 pr-2 pl-4 first:border-t-0"
                             >
                                 <span class="flex min-w-0 flex-1 flex-col">
-                                    <span class="truncate text-sm">{commitment.title}</span>
+                                    <span class="wrap-break-word text-sm">{commitment.title}</span>
                                     {#if commitment.projectName}
-                                        <span class="truncate text-xs text-muted-foreground"
+                                        <span class="wrap-break-word text-xs text-muted-foreground"
                                             >{commitment.projectName}</span
                                         >
                                     {/if}
@@ -447,7 +447,7 @@
                                     )}
                                 >
                                     <span class="flex min-w-0 flex-1 flex-col">
-                                        <span class="truncate text-sm">{task.title}</span>
+                                        <span class="wrap-break-word text-sm">{task.title}</span>
                                         {#if taken && task.takenBy}
                                             <span class="text-xs text-muted-foreground"
                                                 >In the sprint of {formatShortDate(task.takenBy)}</span
@@ -505,7 +505,7 @@
                     <li
                         class="flex min-h-11 items-center justify-between gap-3 border-t border-border px-4 py-2 text-sm first:border-t-0"
                     >
-                        <span class="min-w-0 truncate">{commitment.title}</span>
+                        <span class="min-w-0 wrap-break-word">{commitment.title}</span>
                         <span class="shrink-0 text-xs text-muted-foreground tabular-nums"
                             >{pointsLabel(commitment.points)}</span
                         >
