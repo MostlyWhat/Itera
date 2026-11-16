@@ -2,6 +2,8 @@
     import { Link } from '@inertiajs/svelte';
     import type { Snippet } from 'svelte';
     import AppLogoIcon from '@/components/AppLogoIcon.svelte';
+    import AppWordmark from '@/components/AppWordmark.svelte';
+    import WeekFrame from '@/components/WeekFrame.svelte';
     import { home } from '@/routes';
 
     let {
@@ -16,32 +18,47 @@
 </script>
 
 <div
-    class="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10"
+    class="relative flex min-h-svh flex-col overflow-x-clip bg-background text-foreground"
 >
-    <div class="w-full max-w-sm">
-        <div class="flex flex-col gap-8">
-            <div class="flex flex-col items-center gap-4">
-                <Link
-                    href={home()}
-                    class="flex flex-col items-center gap-2 font-medium"
+    <WeekFrame />
+
+    <header class="relative border-b border-border bg-background">
+        <div
+            class="mx-auto flex h-16 max-w-7xl items-center px-4 sm:px-10 lg:px-4"
+        >
+            <Link href={home()} class="flex items-center gap-2.5">
+                <span
+                    class="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground"
                 >
-                    <div
-                        class="mb-1 flex h-9 w-9 items-center justify-center rounded-md"
-                    >
-                        <AppLogoIcon
-                            class="size-9 fill-current text-(--foreground) dark:text-white"
-                        />
-                    </div>
-                    <span class="sr-only">{title}</span>
-                </Link>
-                <div class="space-y-2 text-center">
-                    <h1 class="type-title">{title}</h1>
-                    <p class="text-center text-sm text-muted-foreground">
-                        {description}
-                    </p>
-                </div>
-            </div>
-            {@render children?.()}
+                    <AppLogoIcon class="size-5" />
+                </span>
+                <AppWordmark class="h-3.5" />
+            </Link>
         </div>
-    </div>
+    </header>
+
+    <main
+        class="relative mx-auto grid w-full max-w-7xl flex-1 grid-cols-7 sm:px-6 lg:px-0"
+    >
+        <!-- The form sits on Tuesday to Friday on large screens. -->
+        <div
+            class="col-span-7 bg-background px-4 py-16 sm:col-span-5 sm:col-start-2 sm:px-8 sm:py-24 lg:col-span-3 lg:col-start-3"
+        >
+            <div class="mx-auto w-full max-w-sm">
+                <div class="mb-8 space-y-2">
+                    <h1
+                        class="text-3xl leading-tight font-semibold tracking-[-0.02em] text-balance"
+                    >
+                        {title}
+                    </h1>
+                    {#if description}
+                        <p class="text-sm text-muted-foreground">
+                            {description}
+                        </p>
+                    {/if}
+                </div>
+                {@render children?.()}
+            </div>
+        </div>
+    </main>
 </div>

@@ -4,7 +4,6 @@
     import LogoGithub from 'carbon-icons-svelte/lib/LogoGithub.svelte';
     import Grid from 'carbon-icons-svelte/lib/Grid.svelte';
     import Menu from 'carbon-icons-svelte/lib/Menu.svelte';
-    import Search from 'carbon-icons-svelte/lib/Search.svelte';
     import AppLogo from '@/components/AppLogo.svelte';
     import AppLogoIcon from '@/components/AppLogoIcon.svelte';
     import Breadcrumbs from '@/components/Breadcrumbs.svelte';
@@ -61,7 +60,7 @@
     const url = currentUrlState();
 
     const activeItemStyles =
-        'text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100';
+        'text-foreground';
 
     const mainNavItems = $derived<NavItem[]>([
         {
@@ -106,7 +105,7 @@
                         <SheetTitle class="sr-only">Navigation menu</SheetTitle>
                         <SheetHeader class="flex justify-start text-left">
                             <AppLogoIcon
-                                class="size-6 fill-current text-black dark:text-white"
+                                class="size-6 text-primary"
                             />
                         </SheetHeader>
                         <div
@@ -182,7 +181,7 @@
                                 </Link>
                                 {#if url.isCurrentUrl(item.href, url.currentUrl)}
                                     <div
-                                        class="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-black dark:bg-white"
+                                        class="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-primary"
                                     ></div>
                                 {/if}
                             </NavigationMenuItem>
@@ -193,16 +192,6 @@
 
             <div class="ml-auto flex items-center space-x-2">
                 <div class="relative flex items-center space-x-1">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        class="group h-9 w-9 cursor-pointer"
-                    >
-                        <Search
-                            class="size-5 opacity-80 group-hover:opacity-100"
-                        />
-                    </Button>
-
                     <div class="hidden space-x-1 lg:flex">
                         {#each rightNavItems as item (toUrl(item.href))}
                             {@const Icon = item.icon}
@@ -254,7 +243,7 @@
                                         />
                                     {/if}
                                     <AvatarFallback
-                                        class="rounded-lg bg-neutral-200 font-semibold text-black dark:bg-neutral-700 dark:text-white"
+                                        class="rounded-lg bg-muted font-semibold text-foreground"
                                     >
                                         {getInitials(auth.user?.name)}
                                     </AvatarFallback>
@@ -275,7 +264,7 @@
     {#if breadcrumbs.length > 1}
         <div class="flex w-full border-b border-sidebar-border/70">
             <div
-                class="mx-auto flex h-12 w-full items-center justify-start px-4 text-neutral-500 md:max-w-7xl"
+                class="mx-auto flex h-12 w-full items-center justify-start px-4 text-muted-foreground md:max-w-7xl"
             >
                 <Breadcrumbs {breadcrumbs} />
             </div>
