@@ -23,22 +23,21 @@
 </script>
 
 <script lang="ts">
-    import { Link, page, router } from '@inertiajs/svelte';
+    import { page, router } from '@inertiajs/svelte';
     import { SvelteSet } from 'svelte/reactivity';
-    import Add from 'carbon-icons-svelte/lib/Add.svelte';
+    import Archive from 'carbon-icons-svelte/lib/Archive.svelte';
     import Calendar from 'carbon-icons-svelte/lib/Calendar.svelte';
     import Checkmark from 'carbon-icons-svelte/lib/Checkmark.svelte';
     import ChevronRight from 'carbon-icons-svelte/lib/ChevronRight.svelte';
     import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
     import OverflowMenuVertical from 'carbon-icons-svelte/lib/OverflowMenuVertical.svelte';
-    import TaskIcon from 'carbon-icons-svelte/lib/Task.svelte';
     import TrashCan from 'carbon-icons-svelte/lib/TrashCan.svelte';
+    import Undo from 'carbon-icons-svelte/lib/Undo.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
     import ProjectForm from '@/components/projects/ProjectForm.svelte';
-    import ProjectSelector, {
-        type NavigationArea,
-    } from '@/components/tasks/ProjectSelector.svelte';
+    import type { ProjectNavigation } from '@/components/projects/ProjectRail.svelte';
+    import ProjectsShell from '@/components/projects/ProjectsShell.svelte';
     import TaskForm from '@/components/tasks/TaskForm.svelte';
     import {
         AlertDialog,
@@ -60,8 +59,11 @@
     } from '@/components/ui/dropdown-menu';
     import { formatShortDate } from '@/lib/dates';
     import { cn } from '@/lib/utils';
-    import { index as areasIndex } from '@/routes/areas';
-    import { update as updateProject } from '@/routes/projects';
+    import {
+        archive as archiveProject,
+        unarchive as unarchiveProject,
+        update as updateProject,
+    } from '@/routes/projects';
     import {
         destroy as destroyTask,
         store as storeTask,
@@ -87,7 +89,7 @@
         storyPointOptions,
         statusOptions,
     }: {
-        navigation: NavigationArea[];
+        navigation: ProjectNavigation;
         project: {
             id: number;
             name: string;
@@ -296,18 +298,8 @@
     </li>
 {/snippet}
 
-<div
-    class="grid gap-6 px-4 py-8 sm:py-10 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10"
->
-    <aside class="lg:sticky lg:top-6 lg:self-start">
-        <ProjectSelector {navigation} {team} currentId={project.id} />
-    </aside>
-
-    <div class="flex min-w-0 flex-col">
-    <header class="mb-6 space-y-2">
-        <p class="text-xs font-medium text-muted-foreground">
-            {project.areaName}
-        </p>
+<ProjectsShell {navigation} {team} currentId={project.id}>
+    <header class="mb-8">
         {#if editingProject}
             <div class="rounded-lg border border-border bg-card p-4">
                 <ProjectForm
@@ -320,112 +312,135 @@
             </div>
         {:else}
             <div class="flex items-start justify-between gap-4">
-                <h1 class="type-title min-w-0 break-words">{project.name}</h1>
-                {#if !project.archived}
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        class="shrink-0 gap-1.5 text-muted-foreground hover:text-foreground"
-                        onclick={() => (editingProject = true)}
+                <div class="min-w-0 space-y-1">
+                    <h1 class="type-title wrap-break-word">{project.name}</h1>
+                    <p
+                        class="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground tabular-nums"
                     >
-                        <Edit class="size-4" />
-                        Edit project
-                    </Button>
+                        <span>{project.areaName}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{openTasks.length} open, {openPoints} points</span>
+                        {#if overdueCount > 0}
+                            <span aria-hidden="true">·</span>
+                            <span class="flex items-center gap-1 font-medium text-destructive">
+                                <WarningAltFilled class="size-4" />
+                                {overdueCount} overdue
+                            </span>
+                        {/if}
+                    </p>
+                </div>
+                {#if !project.archived}
+                    <div class="flex shrink-0 items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            class="gap-1.5 text-muted-foreground hover:text-foreground"
+                            onclick={() => (editingProject = true)}
+                        >
+                            <Edit class="size-4" />
+                            Edit
+                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger>
+                                {#snippet child({ props })}
+                                    <Button
+                                        {...props}
+                                        variant="ghost"
+                                        size="icon"
+                                        class="size-8 text-muted-foreground hover:text-foreground data-[state=open]:bg-accent"
+                                        aria-label={`More actions for ${project.name}`}
+                                    >
+                                        <OverflowMenuVertical class="size-4" />
+                                    </Button>
+                                {/snippet}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" class="w-44">
+                                <DropdownMenuItem
+                                    onSelect={() =>
+                                        router.post(
+                                            archiveProject({ current_team: team, project: project.id }).url,
+                                            {},
+                                            { preserveScroll: true },
+                                        )}
+                                >
+                                    <Archive class="size-4" />
+                                    Archive project
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 {/if}
             </div>
             {#if project.description}
-                <p class="max-w-prose text-sm whitespace-pre-line text-foreground/80">{project.description}</p>
+                <p class="mt-3 max-w-prose text-sm whitespace-pre-line text-muted-foreground">{project.description}</p>
             {/if}
         {/if}
-        <p class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground tabular-nums">
-            <span>{openTasks.length} open {openTasks.length === 1 ? 'task' : 'tasks'}</span>
-            <span>{openPoints} open points</span>
-            {#if overdueCount > 0}
-                <span class="flex items-center gap-1 font-medium text-destructive">
-                    <WarningAltFilled class="size-4" />
-                    {overdueCount} overdue
-                </span>
-            {/if}
-        </p>
     </header>
 
     {#if project.archived}
         <div
-            class="mb-6 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground"
+            class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground"
         >
-            This project is archived. Restore it on the
-            <Link href={areasIndex(team)} class="font-medium text-foreground underline underline-offset-4"
-                >Areas page</Link
-            > to add or change tasks.
-        </div>
-    {:else}
-        <section
-            class="mb-6 rounded-lg border border-border bg-card p-4"
-            aria-label="Add a task"
-        >
-            <TaskForm
-                action={storeTask.form({ current_team: team, project: project.id })}
-                pointOptions={storyPointOptions}
-                submitLabel="Add task"
-            />
-        </section>
-    {/if}
-
-    {#if tasks.length === 0}
-        <div
-            class="flex flex-col items-start gap-3 rounded-lg border border-dashed border-border px-6 py-10 sm:items-center sm:text-center"
-        >
-            <span
-                class="flex size-10 items-center justify-center rounded-md bg-accent text-accent-foreground"
-                aria-hidden="true"
+            <span>This project is archived. Restore it to add or change tasks.</span>
+            <Button
+                variant="outline"
+                size="sm"
+                class="gap-1.5"
+                onclick={() =>
+                    router.delete(
+                        unarchiveProject({ current_team: team, project: project.id }).url,
+                        { preserveScroll: true },
+                    )}
             >
-                <TaskIcon class="size-5" />
-            </span>
-            <div class="space-y-1">
-                <h2 class="type-section">No tasks yet</h2>
-                <p class="max-w-sm text-sm text-muted-foreground">
-                    Add the first task above. Give it story points for the
-                    effort, and a deadline if it has one.
-                </p>
-            </div>
+                <Undo class="size-4" />
+                Restore project
+            </Button>
         </div>
-    {:else}
-        <section aria-labelledby="open-tasks">
-            <h2 id="open-tasks" class="sr-only">Open tasks</h2>
-            {#if openTasks.length > 0}
-                <ul class="overflow-hidden rounded-lg border border-border bg-card">
-                    {#each openTasks as task (task.id)}
-                        {@render taskRow(task)}
-                    {/each}
-                </ul>
-            {:else}
-                <p class="rounded-lg border border-border bg-card px-4 py-6 text-sm text-muted-foreground">
-                    All tasks are done.
-                </p>
-            {/if}
-        </section>
-
-        {#if doneTasks.length > 0}
-            <details class="group mt-8">
-                <summary
-                    class="flex w-fit cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden"
-                >
-                    <ChevronRight
-                        class="size-4 group-open:rotate-90 motion-safe:transition-transform"
-                    />
-                    Done
-                    <span class="tabular-nums">({doneTasks.length})</span>
-                </summary>
-                <ul class="mt-3 overflow-hidden rounded-lg border border-border bg-card">
-                    {#each doneTasks as task (task.id)}
-                        {@render taskRow(task)}
-                    {/each}
-                </ul>
-            </details>
-        {/if}
     {/if}
-    </div>
-</div>
+
+    <section aria-labelledby="open-tasks" class="overflow-hidden rounded-lg border border-border bg-card">
+        <h2 id="open-tasks" class="sr-only">Open tasks</h2>
+        {#if !project.archived}
+            <div class={cn('p-3', openTasks.length > 0 && 'border-b border-border')}>
+                <TaskForm
+                    action={storeTask.form({ current_team: team, project: project.id })}
+                    pointOptions={storyPointOptions}
+                    submitLabel="Add task"
+                />
+            </div>
+        {/if}
+        {#if openTasks.length > 0}
+            <ul>
+                {#each openTasks as task (task.id)}
+                    {@render taskRow(task)}
+                {/each}
+            </ul>
+        {:else}
+            <p class="px-4 pt-2 pb-6 text-sm text-muted-foreground">
+                {tasks.length === 0
+                    ? 'No tasks yet. Type the first one above and press Enter.'
+                    : 'All tasks are done.'}
+            </p>
+        {/if}
+    </section>
+
+    {#if doneTasks.length > 0}
+        <details class="group mt-6">
+            <summary
+                class="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none [&::-webkit-details-marker]:hidden"
+            >
+                <ChevronRight class="size-4 group-open:rotate-90 motion-safe:transition-transform" />
+                Done
+                <span class="tabular-nums">({doneTasks.length})</span>
+            </summary>
+            <ul class="mt-3 overflow-hidden rounded-lg border border-border bg-card">
+                {#each doneTasks as task (task.id)}
+                    {@render taskRow(task)}
+                {/each}
+            </ul>
+        </details>
+    {/if}
+</ProjectsShell>
 
 <AlertDialog
     open={deleting !== null}

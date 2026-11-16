@@ -25,8 +25,8 @@
     import { cn } from '@/lib/utils';
 
     // Create a Task (no `task`) or edit one. Story points are a radio group
-    // with the allowed values. The description is optional, so the create
-    // form shows it only on request.
+    // with the allowed values. The create form shows only the title until
+    // it gets focus. The description is optional and opens on request.
     let {
         action,
         task,
@@ -67,6 +67,18 @@
 
     const isEdit = $derived(task !== undefined);
     // svelte-ignore state_referenced_locally
+    let expanded = $state(task !== undefined);
+
+    // Close the details of the create form, or cancel the edit.
+    const cancel = () => {
+        if (onCancel) {
+            onCancel();
+        } else {
+            expanded = false;
+            titleInput?.blur();
+        }
+    };
+    // svelte-ignore state_referenced_locally
     let status = $state(task?.status ?? 'todo');
     const statusLabel = $derived(
         statusOptions.find((option) => option.value === status)?.label ?? '',
@@ -82,7 +94,10 @@
     class="flex flex-col gap-3"
     options={{ preserveScroll: true }}
     resetOnSuccess={!isEdit}
-    onSuccess={() => onDone?.()}
+    onSuccess={() => {
+        onDone?.();
+        titleInput?.focus();
+    }}
 >
     {#snippet children({ errors, processing })}
         <div class="flex flex-col gap-1.5">
@@ -92,21 +107,23 @@
                 bind:ref={titleInput}
                 name="title"
                 value={task?.title ?? ''}
-                placeholder="What needs to be done?"
+                placeholder={isEdit ? 'Task title' : 'Add a task'}
                 maxlength={200}
                 required
                 autocomplete="off"
                 aria-invalid={errors.title ? 'true' : undefined}
                 class="h-9"
+                onfocus={() => (expanded = true)}
                 onkeydown={(event: KeyboardEvent) => {
                     if (event.key === 'Escape') {
-                        onCancel?.();
+                        cancel();
                     }
                 }}
             />
             <InputError message={errors.title} />
         </div>
 
+        {#if expanded}
         {#if showDescription}
             <div class="flex flex-col gap-1.5">
                 <label
@@ -213,17 +230,15 @@
             {/if}
 
             <div class="ml-auto flex items-center gap-2">
-                {#if onCancel}
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        class="h-9"
-                        onclick={() => onCancel?.()}
-                    >
-                        Cancel
-                    </Button>
-                {/if}
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    class="h-9"
+                    onclick={cancel}
+                >
+                    Cancel
+                </Button>
                 <Button
                     type="submit"
                     size="sm"
@@ -234,5 +249,6 @@
                 </Button>
             </div>
         </div>
+        {/if}
     {/snippet}
 </Form>

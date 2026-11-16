@@ -17,7 +17,7 @@ use Inertia\Inertia;
 class ProjectController extends Controller
 {
     /**
-     * Add a Project at the end of an Area's list.
+     * Add a Project at the end of an Area's list, then open it.
      */
     public function store(SaveProjectRequest $request, Area $area): RedirectResponse
     {
@@ -29,11 +29,11 @@ class ProjectController extends Controller
             ]);
         }
 
-        $area->projects()->create($request->validated());
+        $project = $area->projects()->create($request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Project created.')]);
 
-        return back();
+        return to_route('projects.show', ['project' => $project]);
     }
 
     /**

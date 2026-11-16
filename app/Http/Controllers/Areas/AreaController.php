@@ -2,16 +2,12 @@
 
 namespace App\Http\Controllers\Areas;
 
-use App\Enums\TaskStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Areas\SaveAreaRequest;
 use App\Models\Area;
-use App\Models\Project;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
-use Inertia\Response;
 
 /**
  * Areas of the current team. The team comes from the URL. The
@@ -21,52 +17,11 @@ use Inertia\Response;
 class AreaController extends Controller
 {
     /**
-     * Show the Areas and Projects of the current team.
+     * The Areas page is part of the Projects page now. Old links go there.
      */
-    public function index(Request $request): Response
+    public function index(): RedirectResponse
     {
-        $team = $request->user()->currentTeam;
-
-        $areas = $team->areas()
-            ->with(['projects' => fn ($query) => $query->withCount([
-                'tasks as open_tasks_count' => fn ($tasks) => $tasks->where('status', '!=', TaskStatus::Done->value),
-                'tasks as overdue_tasks_count' => fn ($tasks) => $tasks->overdue(),
-            ])])
-            ->get();
-
-        $active = $areas->filter(fn (Area $area) => ! $area->isArchived());
-
-        return Inertia::render('areas/Index', [
-            'areas' => $active->values()->map(fn (Area $area) => [
-                'id' => $area->id,
-                'name' => $area->name,
-                'projects' => $area->projects
-                    ->reject(fn (Project $project) => $project->isArchived())
-                    ->values()
-                    ->map(fn (Project $project) => [
-                        'id' => $project->id,
-                        'name' => $project->name,
-                        'openTasks' => (int) $project->getAttribute('open_tasks_count'),
-                        'overdueTasks' => (int) $project->getAttribute('overdue_tasks_count'),
-                    ]),
-            ]),
-            'archivedAreas' => $areas
-                ->filter(fn (Area $area) => $area->isArchived())
-                ->values()
-                ->map(fn (Area $area) => [
-                    'id' => $area->id,
-                    'name' => $area->name,
-                ]),
-            'archivedProjects' => $active
-                ->flatMap(fn (Area $area) => $area->projects
-                    ->filter(fn (Project $project) => $project->isArchived())
-                    ->map(fn (Project $project) => [
-                        'id' => $project->id,
-                        'name' => $project->name,
-                        'areaName' => $area->name,
-                    ]))
-                ->values(),
-        ]);
+        return to_route('projects.index');
     }
 
     /**

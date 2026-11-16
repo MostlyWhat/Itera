@@ -203,7 +203,7 @@ test('users cannot see or change the tasks of another user', function () {
         ->and($otherProject->tasks()->count())->toBe(1);
 });
 
-test('the areas page shows open and overdue task counts for each project', function () {
+test('the project list shows open and overdue task counts for each project', function () {
     Carbon::setTestNow('2026-11-16 09:00');
     [$user, $project, $slug] = userWithProject();
 
@@ -212,10 +212,10 @@ test('the areas page shows open and overdue task counts for each project', funct
     Task::factory()->for($project)->done()->create(['due_date' => '2026-11-10']);
 
     $this->actingAs($user)
-        ->get(route('areas.index', $slug))
+        ->get(route('projects.show', [$slug, $project]))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('areas.0.projects.0.openTasks', 2)
-            ->where('areas.0.projects.0.overdueTasks', 1));
+            ->where('navigation.areas.0.projects.0.openTasks', 2)
+            ->where('navigation.areas.0.projects.0.overdueTasks', 1));
 });
 
 test('the projects page opens the first active project', function () {
@@ -232,15 +232,20 @@ test('the projects page opens the first active project', function () {
         ->assertRedirect(route('projects.show', [$team->slug, $first]));
 });
 
-test('the projects page sends users without projects to the areas page', function () {
+test('the projects page opens empty for users without projects', function () {
     $user = User::factory()->create();
+    Area::factory()->for($user->currentTeam)->create(['name' => 'Biology 201']);
 
     $this->actingAs($user)
         ->get(route('projects.index', $user->currentTeam->slug))
-        ->assertRedirect(route('areas.index', $user->currentTeam->slug));
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('projects/Index')
+            ->has('navigation.areas', 1)
+            ->has('navigation.areas.0.projects', 0));
 });
 
-test('the project page lists all active projects for the selector', function () {
+test('the project page lists all active projects in the project list', function () {
     Carbon::setTestNow('2026-11-16 09:00');
     [$user, $project, $slug] = userWithProject();
     $other = Project::factory()->for($project->area)->create(['name' => 'Midterm review']);
@@ -250,11 +255,11 @@ test('the project page lists all active projects for the selector', function () 
     $this->actingAs($user)
         ->get(route('projects.show', [$slug, $project]))
         ->assertInertia(fn (Assert $page) => $page
-            ->has('navigation', 1)
-            ->has('navigation.0.projects', 2)
-            ->where('navigation.0.projects.0.name', 'Lab report')
-            ->where('navigation.0.projects.1.name', 'Midterm review')
-            ->where('navigation.0.projects.1.overdueTasks', 1));
+            ->has('navigation.areas', 1)
+            ->has('navigation.areas.0.projects', 2)
+            ->where('navigation.areas.0.projects.0.name', 'Lab report')
+            ->where('navigation.areas.0.projects.1.name', 'Midterm review')
+            ->where('navigation.areas.0.projects.1.overdueTasks', 1));
 });
 
 test('users can give a task a description, and the project page shows it', function () {

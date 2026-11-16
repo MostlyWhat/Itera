@@ -46,7 +46,6 @@
     import { getInitials } from '@/lib/initials';
     import { toUrl } from '@/lib/utils';
     import { dashboard } from '@/routes';
-    import { index as areasIndex } from '@/routes/areas';
     import { index as projectsIndex } from '@/routes/projects';
     import { index as sprintsIndex } from '@/routes/sprints';
     import type { BreadcrumbItem, NavItem, Team } from '@/types';
@@ -70,17 +69,12 @@
 
     const mainNavItems = $derived<NavItem[]>([
         {
-            title: 'Dashboard',
+            title: 'This week',
             href: dashboardUrl,
             icon: Grid,
         },
         ...(currentTeam
             ? [
-                  {
-                      title: 'Areas',
-                      href: areasIndex(currentTeam.slug),
-                      icon: Folders,
-                  },
                   {
                       title: 'Projects',
                       href: projectsIndex(currentTeam.slug),
