@@ -65,7 +65,7 @@ test('project tasks list open tasks first, then by deadline', function () {
     $later = Task::factory()->for($project)->create(['due_date' => '2026-11-20']);
     $sooner = Task::factory()->for($project)->create(['due_date' => '2026-11-18']);
 
-    expect($project->tasks->pluck('id')->all())
+    expect($project->tasks()->inListOrder()->pluck('id')->all())
         ->toBe([$sooner->id, $later->id, $noDate->id, $done->id]);
 });
 

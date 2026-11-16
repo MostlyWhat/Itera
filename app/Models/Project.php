@@ -53,16 +53,13 @@ class Project extends Model
     }
 
     /**
-     * Get the Tasks of the Project. Open Tasks come first, then by deadline.
+     * Get the Tasks of the Project. Use the `inListOrder` scope to sort them.
+     * The relation has no order, so count queries also work on PostgreSQL.
      *
      * @return HasMany<Task, $this>
      */
     public function tasks(): HasMany
     {
-        return $this->hasMany(Task::class)
-            ->orderByRaw("case when status = 'done' then 1 else 0 end")
-            ->orderByRaw('case when due_date is null then 1 else 0 end')
-            ->orderBy('due_date')
-            ->orderBy('id');
+        return $this->hasMany(Task::class);
     }
 }

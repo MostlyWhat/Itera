@@ -90,6 +90,20 @@ class Task extends Model
     }
 
     /**
+     * Sort Tasks for a list: open Tasks first, then by deadline, then the
+     * Tasks without a deadline, and done Tasks last.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeInListOrder(Builder $query): void
+    {
+        $query->orderByRaw('case when status = ? then 1 else 0 end', [TaskStatus::Done->value])
+            ->orderByRaw('case when due_date is null then 1 else 0 end')
+            ->orderBy('due_date')
+            ->orderBy('id');
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
