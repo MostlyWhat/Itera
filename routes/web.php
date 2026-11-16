@@ -3,6 +3,7 @@
 use App\Http\Controllers\Areas\AreaController;
 use App\Http\Controllers\Areas\ProjectController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Sprints\SprintController;
 use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Middleware\EnsureTeamMembership;
@@ -33,6 +34,13 @@ Route::prefix('{current_team}')
         Route::post('projects/{project}/tasks', [TaskController::class, 'store'])->name('tasks.store');
         Route::patch('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
         Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+
+        // Sprints (ITERA-04)
+        Route::get('sprints', [SprintController::class, 'index'])->name('sprints.index');
+        Route::post('sprints', [SprintController::class, 'store'])->name('sprints.store');
+        Route::get('sprints/{sprint}', [SprintController::class, 'show'])->name('sprints.show');
+        Route::patch('sprints/{sprint}', [SprintController::class, 'update'])->name('sprints.update');
+        Route::post('sprints/{sprint}/tasks', [SprintController::class, 'addTask'])->name('sprints.tasks.store');
     });
 
 Route::middleware(['auth'])->group(function () {
