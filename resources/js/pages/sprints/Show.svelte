@@ -183,7 +183,7 @@
                 <h1 class="type-title">{weekName(sprint.weekStart)}</h1>
                 <span
                     class={cn(
-                        'rounded-sm px-1.5 py-0.5 text-[11px] font-medium',
+                        'rounded-sm px-1.5 py-0.5 text-xs font-medium',
                         sprint.timing === 'past'
                             ? 'bg-muted text-muted-foreground'
                             : 'bg-accent text-accent-foreground',

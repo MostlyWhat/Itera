@@ -82,7 +82,7 @@
         {#each navigation as area (area.id)}
             <div>
                 <h2
-                    class="mb-1.5 wrap-break-word px-2 text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase"
+                    class="mb-1.5 wrap-break-word px-2 text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase"
                 >
                     {area.name}
                 </h2>
@@ -106,7 +106,7 @@
                                 >
                                 {#if project.overdueTasks > 0}
                                     <span
-                                        class="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive/10 px-1.5 text-[11px] font-medium text-destructive tabular-nums"
+                                        class="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive/10 px-1.5 text-xs font-medium text-destructive tabular-nums"
                                         title={`${project.overdueTasks} overdue`}
                                     >
                                         {project.overdueTasks}
@@ -114,7 +114,7 @@
                                     </span>
                                 {:else if project.openTasks > 0}
                                     <span
-                                        class="text-[11px] text-muted-foreground tabular-nums"
+                                        class="text-xs text-muted-foreground tabular-nums"
                                         title={`${project.openTasks} open`}
                                     >
                                         {project.openTasks}

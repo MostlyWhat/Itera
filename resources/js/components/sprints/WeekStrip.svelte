@@ -46,7 +46,7 @@
             {/if}
             <span
                 class={cn(
-                    'block text-[11px] font-medium tracking-[0.06em] uppercase',
+                    'block text-xs font-medium tracking-[0.06em] uppercase',
                     day.isToday ? 'text-primary' : 'text-muted-foreground',
                 )}
             >

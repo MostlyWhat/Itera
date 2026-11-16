@@ -20,7 +20,7 @@
             return {
                 title: 'Recovery code',
                 description:
-                    'Please confirm access to your account by entering one of your emergency recovery codes.',
+                    'Enter one of your emergency recovery codes to confirm access to your account.',
                 buttonText: 'login using an authentication code',
             };
         }

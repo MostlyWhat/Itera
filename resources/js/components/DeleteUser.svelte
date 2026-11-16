@@ -29,7 +29,7 @@
         <div class="relative space-y-0.5 text-red-600 dark:text-red-100">
             <p class="font-medium">Warning</p>
             <p class="text-sm">
-                Please proceed with caution, this cannot be undone.
+                You cannot undo this.
             </p>
         </div>
         <Dialog>
@@ -50,11 +50,8 @@
                                 >Are you sure you want to delete your account?</DialogTitle
                             >
                             <DialogDescription>
-                                Once your account is deleted, all of its
-                                resources and data will also be permanently
-                                deleted. Please enter your password to confirm
-                                you would like to permanently delete your
-                                account.
+                                This deletes your account and all of its data
+                                for good. Enter your password to confirm.
                             </DialogDescription>
                         </div>
 

@@ -130,7 +130,7 @@
         {:else}
             <button
                 type="button"
-                class="w-fit text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:underline focus-visible:outline-none"
+                class="w-fit rounded-sm text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                 onclick={openDescription}
             >
                 Add a description

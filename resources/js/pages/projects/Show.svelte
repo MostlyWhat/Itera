@@ -58,6 +58,7 @@
         DropdownMenuSeparator,
         DropdownMenuTrigger,
     } from '@/components/ui/dropdown-menu';
+    import { formatShortDate } from '@/lib/dates';
     import { cn } from '@/lib/utils';
     import { index as areasIndex } from '@/routes/areas';
     import { update as updateProject } from '@/routes/projects';
@@ -123,14 +124,6 @@
     const overdueCount = $derived(
         openTasks.filter((task) => task.isOverdue).length,
     );
-
-    // A deadline is a calendar date. Read it as local midnight, so the day
-    // does not shift in time zones west of UTC.
-    const formatDate = (date: string) =>
-        new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric',
-        });
 
     // Mark a Task done, or open it again. Only the status changes.
     const toggleDone = (task: TaskItem) => {
@@ -214,7 +207,7 @@
                         </span>
                         {#if task.status === 'in_progress'}
                             <span
-                                class="w-fit shrink-0 rounded-sm bg-accent px-1.5 py-0.5 text-[11px] font-medium text-accent-foreground"
+                                class="w-fit shrink-0 rounded-sm bg-accent px-1.5 py-0.5 text-xs font-medium text-accent-foreground"
                             >
                                 In progress
                             </span>
@@ -249,7 +242,7 @@
                             {:else}
                                 <Calendar class="size-3.5" />
                             {/if}
-                            {formatDate(task.dueDate)}
+                            {formatShortDate(task.dueDate)}
                         </span>
                     {/if}
                     <span

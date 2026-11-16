@@ -16,6 +16,10 @@
 
 <script lang="ts">
     import { Link, page, router } from '@inertiajs/svelte';
+    import { flip } from 'svelte/animate';
+    import { cubicOut } from 'svelte/easing';
+    import { prefersReducedMotion } from 'svelte/motion';
+    import { crossfade, fade } from 'svelte/transition';
     import ArrowLeft from 'carbon-icons-svelte/lib/ArrowLeft.svelte';
     import ArrowRight from 'carbon-icons-svelte/lib/ArrowRight.svelte';
     import Calendar from 'carbon-icons-svelte/lib/Calendar.svelte';
@@ -76,6 +80,23 @@
     $effect(() => {
         cards = board ? board.cards.map((card) => ({ ...card })) : [];
     });
+
+    // A moved card travels from its old column to the new one, so the eye
+    // can follow it. Under reduced motion it fades out and in instead.
+    const [crossSend, crossReceive] = crossfade({
+        duration: 200,
+        easing: cubicOut,
+        fallback: (node) => fade(node, { duration: 150 }),
+    });
+    const send = (node: Element, params: { key: number }) =>
+        prefersReducedMotion.current
+            ? () => fade(node, { duration: 150 })
+            : crossSend(node, params);
+    const receive = (node: Element, params: { key: number }) =>
+        prefersReducedMotion.current
+            ? () => fade(node, { duration: 150 })
+            : crossReceive(node, params);
+    const flipDuration = () => (prefersReducedMotion.current ? 0 : 200);
 
     let dragging = $state<number | null>(null);
     let dropTarget = $state<Status | null>(null);
@@ -230,6 +251,9 @@
                         <ul class="flex flex-col gap-1.5 p-1.5">
                             {#each items as card (card.taskId)}
                                 <li
+                                    in:receive={{ key: card.taskId }}
+                                    out:send={{ key: card.taskId }}
+                                    animate:flip={{ duration: flipDuration }}
                                     draggable="true"
                                     ondragstart={(event: DragEvent) => {
                                         dragging = card.taskId;
@@ -253,7 +277,7 @@
                                             )}>{card.title}</span
                                         >
                                         <span
-                                            class="shrink-0 rounded-sm border border-border px-1.5 text-[11px] text-muted-foreground tabular-nums"
+                                            class="shrink-0 rounded-sm border border-border px-1.5 text-xs text-muted-foreground tabular-nums"
                                             >{card.points === null ? '–' : card.points}</span
                                         >
                                     </div>
@@ -308,7 +332,7 @@
                                 <li
                                     class="rounded-md border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground"
                                 >
-                                    Drop a task here
+                                    No tasks
                                 </li>
                             {/each}
                         </ul>
