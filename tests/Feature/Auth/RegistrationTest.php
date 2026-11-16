@@ -46,3 +46,40 @@ test('new users can register', function () {
     $user = User::where('email', 'test@example.com')->first();
     $response->assertRedirect(route('dashboard'));
 });
+
+// ITERA-01: the system shows an error when the account information is not valid.
+test('registration fails with invalid information', function (array $input, string $field) {
+    $response = $this->from(route('register'))->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        ...$input,
+    ]);
+
+    $response->assertRedirect(route('register'));
+    $response->assertSessionHasErrors($field);
+    $this->assertGuest();
+    expect(User::where('email', 'test@example.com')->exists())->toBeFalse();
+})->with([
+    'missing name' => [['name' => ''], 'name'],
+    'missing email' => [['email' => ''], 'email'],
+    'invalid email' => [['email' => 'not-an-email'], 'email'],
+    'missing password' => [['password' => '', 'password_confirmation' => ''], 'password'],
+    'password confirmation does not match' => [['password_confirmation' => 'different-password'], 'password'],
+]);
+
+test('registration fails when the email is already used', function () {
+    User::factory()->create(['email' => 'taken@example.com']);
+
+    $response = $this->from(route('register'))->post(route('register.store'), [
+        'name' => 'Second User',
+        'email' => 'taken@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    $response->assertSessionHasErrors('email');
+    $this->assertGuest();
+    expect(User::where('email', 'taken@example.com')->count())->toBe(1);
+});
