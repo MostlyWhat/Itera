@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, TeamInvitation> $invitations
  * @property-read Collection<int, Membership> $memberships
  * @property-read Collection<int, User> $members
+ * @property-read Collection<int, Area> $areas
  */
 #[Fillable(['name', 'slug', 'is_personal'])]
 class Team extends Model
@@ -93,6 +94,16 @@ class Team extends Model
     public function invitations(): HasMany
     {
         return $this->hasMany(TeamInvitation::class);
+    }
+
+    /**
+     * Get the Areas of this team, in list order.
+     *
+     * @return HasMany<Area, $this>
+     */
+    public function areas(): HasMany
+    {
+        return $this->hasMany(Area::class)->orderBy('position');
     }
 
     /**
