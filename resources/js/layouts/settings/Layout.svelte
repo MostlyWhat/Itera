@@ -7,6 +7,7 @@
     import { currentUrlState } from '@/lib/currentUrl.svelte';
     import { cn, toUrl } from '@/lib/utils';
     import { edit as editAppearance } from '@/routes/appearance';
+    import { edit as editPlanning } from '@/routes/planning';
     import { edit as editProfile } from '@/routes/profile';
     import { edit as editSecurity } from '@/routes/security';
     import { index as teams } from '@/routes/teams';
@@ -34,6 +35,10 @@
         {
             title: 'Appearance',
             href: editAppearance(),
+        },
+        {
+            title: 'Planning',
+            href: editPlanning(),
         },
     ];
 

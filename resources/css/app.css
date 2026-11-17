@@ -36,13 +36,16 @@
     --font-mono:
         ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
 
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
+    /* Whole-pixel steps (4, 6, 8, 12, 16, 24, 32 px). A container's radius is
+       its child's radius plus the padding between them, so nested corners
+       stay concentric: a 4px item in a 4px-padded menu needs an 8px menu. */
+    --radius-sm: calc(var(--radius) * 0.5);
+    --radius-md: calc(var(--radius) * 0.75);
     --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
+    --radius-xl: calc(var(--radius) * 1.5);
+    --radius-2xl: calc(var(--radius) * 2);
+    --radius-3xl: calc(var(--radius) * 3);
+    --radius-4xl: calc(var(--radius) * 4);
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -67,6 +70,7 @@
 
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
+    --color-destructive-solid: var(--destructive-solid);
 
     --color-border: var(--border);
     --color-input: var(--input);
@@ -114,6 +118,8 @@
     --accent-foreground: oklch(0.37 0.15 260);
     --destructive: oklch(0.577 0.215 27.3);
     --destructive-foreground: oklch(0.577 0.215 27.3);
+    /* Fill for a button with white text (4.83:1). */
+    --destructive-solid: oklch(0.577 0.215 27.3);
 
     --border: oklch(0.915 0.004 106.5);
     --input: oklch(0.88 0.005 106.5);
@@ -155,6 +161,8 @@
     --accent-foreground: oklch(0.92 0.03 260);
     --destructive: oklch(0.704 0.191 22.2);
     --destructive-foreground: oklch(0.704 0.191 22.2);
+    /* Darker than --destructive, so white text keeps 5.15:1. */
+    --destructive-solid: oklch(0.56 0.2 25);
 
     --border: oklch(0.3 0.006 106.7);
     --input: oklch(0.362 0.007 106.7);
@@ -231,5 +239,25 @@
 
     [dir='rtl'] .cn-rtl-flip {
         transform: scaleX(-1);
+    }
+}
+
+/* Reduced motion: menus, popovers, and dialogs fade, but do not zoom, slide,
+   spin, or blur. Opacity changes stay, because they help to follow the change. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+        --tw-enter-scale: 1 !important;
+        --tw-exit-scale: 1 !important;
+        --tw-enter-translate-x: 0 !important;
+        --tw-enter-translate-y: 0 !important;
+        --tw-exit-translate-x: 0 !important;
+        --tw-exit-translate-y: 0 !important;
+        --tw-enter-rotate: 0 !important;
+        --tw-exit-rotate: 0 !important;
+        --tw-enter-blur: 0 !important;
+        --tw-exit-blur: 0 !important;
+        scroll-behavior: auto !important;
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\StoryPoints;
+use App\Enums\TaskStatus;
 use App\Models\Area;
 use App\Models\Project;
 use App\Models\Sprint;
@@ -304,4 +305,31 @@ test('users cannot add a task to a past sprint or the sprint of another user', f
     $this->actingAs($user)
         ->post(route('sprints.tasks.store', [$slug, $other]), ['title' => 'Intruder', 'project_id' => $first->project_id])
         ->assertForbidden();
+});
+
+test('a task finished during the week does not block changes to the sprint', function () {
+    [$user, $slug, $first, $second] = userWithTasks();
+    $sprint = Sprint::factory()->for($user->currentTeam)->create(['week_start' => '2026-11-16']);
+    SprintCommitment::factory()->for($sprint)->create(['task_id' => $first->id]);
+    $first->update(['status' => TaskStatus::Done]);
+
+    $this->actingAs($user)
+        ->patch(route('sprints.update', [$slug, $sprint]), ['task_ids' => [$first->id, $second->id]])
+        ->assertSessionHasNoErrors();
+
+    expect($sprint->commitments()->pluck('task_id')->sort()->values()->all())->toBe([$first->id, $second->id]);
+});
+
+test('a done task stays in the sprint when the list leaves it out', function () {
+    [$user, $slug, $first, $second] = userWithTasks();
+    $sprint = Sprint::factory()->for($user->currentTeam)->create(['week_start' => '2026-11-16']);
+    SprintCommitment::factory()->for($sprint)->create(['task_id' => $first->id]);
+    SprintCommitment::factory()->for($sprint)->create(['task_id' => $second->id]);
+    $first->update(['status' => TaskStatus::Done]);
+
+    $this->actingAs($user)
+        ->patch(route('sprints.update', [$slug, $sprint]), ['task_ids' => []])
+        ->assertSessionHasNoErrors();
+
+    expect($sprint->commitments()->pluck('task_id')->all())->toBe([$first->id]);
 });

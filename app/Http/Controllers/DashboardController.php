@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Project;
+use App\Models\Task;
 use App\Models\TeamInvitation;
 use App\Queries\CurrentSprintBoard;
 use Illuminate\Http\Request;
@@ -32,9 +34,17 @@ class DashboardController extends Controller
                 ],
             ]);
 
+        $team = $request->user()->currentTeam;
+        $currentBoard = $board->for($team);
+
         return Inertia::render('Dashboard', [
             'pendingInvitations' => $pendingInvitations,
-            'board' => $board->for($request->user()->currentTeam),
+            'board' => $currentBoard,
+            // Without a sprint, the dashboard shows the next setup step.
+            'setup' => $currentBoard === null ? [
+                'hasProject' => Project::query()->whereHas('area', fn ($area) => $area->whereBelongsTo($team))->exists(),
+                'hasTask' => Task::query()->whereHas('project.area', fn ($area) => $area->whereBelongsTo($team))->exists(),
+            ] : null,
         ]);
     }
 }

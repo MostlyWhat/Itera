@@ -17,7 +17,7 @@ use Inertia\Inertia;
 class ProjectController extends Controller
 {
     /**
-     * Add a Project at the end of an Area's list.
+     * Add a Project at the end of an Area's list, then open it.
      */
     public function store(SaveProjectRequest $request, Area $area): RedirectResponse
     {
@@ -29,15 +29,15 @@ class ProjectController extends Controller
             ]);
         }
 
-        $area->projects()->create($request->validated());
+        $project = $area->projects()->create($request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Project created.')]);
 
-        return back();
+        return to_route('projects.show', ['project' => $project]);
     }
 
     /**
-     * Rename a Project.
+     * Rename a Project or change its description.
      */
     public function update(SaveProjectRequest $request, Project $project): RedirectResponse
     {
@@ -45,7 +45,7 @@ class ProjectController extends Controller
 
         $project->update($request->validated());
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Project renamed.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Project saved.')]);
 
         return back();
     }

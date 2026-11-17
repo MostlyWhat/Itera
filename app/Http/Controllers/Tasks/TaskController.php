@@ -6,13 +6,11 @@ use App\Enums\StoryPoints;
 use App\Enums\TaskStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tasks\SaveTaskRequest;
-use App\Models\Area;
 use App\Models\Project;
 use App\Models\Task;
-use App\Models\Team;
+use App\Queries\ProjectNavigation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -26,17 +24,15 @@ class TaskController extends Controller
 {
     /**
      * Open the Projects page on the first active Project of the current team.
+     * Without a Project, show the empty page, where the user creates the first one.
      */
-    public function projects(Request $request): RedirectResponse
+    public function projects(Request $request, ProjectNavigation $navigation): RedirectResponse|Response
     {
-        $first = $this->navigation($request->user()->currentTeam)
-            ->flatMap(fn (array $area) => $area['projects'])
-            ->first();
+        $list = $navigation->for($request->user()->currentTeam);
+        $first = collect($list['areas'])->flatMap(fn (array $area) => $area['projects'])->first();
 
         if ($first === null) {
-            Inertia::flash('toast', ['type' => 'info', 'message' => __('Create an area and a project first.')]);
-
-            return to_route('areas.index');
+            return Inertia::render('projects/Index', ['navigation' => $list]);
         }
 
         return to_route('projects.show', ['project' => $first['id']]);
@@ -45,23 +41,25 @@ class TaskController extends Controller
     /**
      * Show a Project with its Tasks, next to the list of all Projects.
      */
-    public function index(Project $project): Response
+    public function index(Project $project, ProjectNavigation $navigation): Response
     {
         Gate::authorize('view', $project);
 
         $tasks = $project->tasks()->inListOrder()->get();
 
         return Inertia::render('projects/Show', [
-            'navigation' => $this->navigation($project->area->team),
+            'navigation' => $navigation->for($project->area->team),
             'project' => [
                 'id' => $project->id,
                 'name' => $project->name,
+                'description' => $project->description,
                 'areaName' => $project->area->name,
                 'archived' => $project->isArchived() || $project->area->isArchived(),
             ],
             'tasks' => $tasks->map(fn (Task $task) => [
                 'id' => $task->id,
                 'title' => $task->title,
+                'description' => $task->description,
                 'status' => $task->status->value,
                 'statusLabel' => $task->status->label(),
                 'storyPoints' => $task->story_points?->value,
@@ -74,35 +72,6 @@ class TaskController extends Controller
                 'label' => $status->label(),
             ]),
         ]);
-    }
-
-    /**
-     * The active Areas of a team with their active Projects and task counts,
-     * for the project selector.
-     *
-     * @return Collection<int, array{id: int, name: string, projects: array<int, array{id: int, name: string, openTasks: int, overdueTasks: int}>}>
-     */
-    private function navigation(Team $team): Collection
-    {
-        return $team->areas()
-            ->active()
-            ->with(['projects' => fn ($query) => $query->active()->withCount([
-                'tasks as open_tasks_count' => fn ($tasks) => $tasks->where('status', '!=', TaskStatus::Done->value),
-                'tasks as overdue_tasks_count' => fn ($tasks) => $tasks->overdue(),
-            ])])
-            ->get()
-            ->filter(fn (Area $area) => $area->projects->isNotEmpty())
-            ->values()
-            ->map(fn (Area $area) => [
-                'id' => $area->id,
-                'name' => $area->name,
-                'projects' => $area->projects->map(fn (Project $project) => [
-                    'id' => $project->id,
-                    'name' => $project->name,
-                    'openTasks' => (int) $project->getAttribute('open_tasks_count'),
-                    'overdueTasks' => (int) $project->getAttribute('overdue_tasks_count'),
-                ])->values()->all(),
-            ]);
     }
 
     /**
@@ -126,7 +95,7 @@ class TaskController extends Controller
     }
 
     /**
-     * Edit a Task: title, story points, deadline, or status.
+     * Edit a Task: title, description, story points, deadline, or status.
      */
     public function update(SaveTaskRequest $request, Task $task): RedirectResponse
     {

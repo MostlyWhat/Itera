@@ -41,21 +41,25 @@ export function formatWeekRange(start: string, end: string): string {
     return `${formatShortDate(from)} – ${endLabel}`;
 }
 
-/** "This week", "Next week", or "Week of Nov 30" for a Monday. */
-export function weekName(monday: string): string {
+/**
+ * "This week", "Next week", or "Week of Nov 30" for the first day of a
+ * seven-day week. The week can start on any day of the week.
+ */
+export function weekName(start: string): string {
+    const first = parseDate(start);
     const today = new Date();
-    const thisMonday = addDays(today, -((today.getDay() + 6) % 7));
-    const value = parseDate(monday);
+    today.setHours(0, 0, 0, 0);
+    const days = Math.round((today.getTime() - first.getTime()) / 86_400_000);
 
-    if (isSameDay(value, thisMonday)) {
+    if (days >= 0 && days <= 6) {
         return 'This week';
     }
 
-    if (isSameDay(value, addDays(thisMonday, 7))) {
+    if (days >= -7 && days <= -1) {
         return 'Next week';
     }
 
-    return `Week of ${formatShortDate(value)}`;
+    return `Week of ${formatShortDate(first)}`;
 }
 
 /** "YYYY-MM-DD" in local time, the format the server expects. */

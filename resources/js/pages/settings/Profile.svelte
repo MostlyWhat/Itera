@@ -78,7 +78,7 @@
                     <p class="-mt-4 text-sm text-muted-foreground">
                         Your email address is unverified.
                         <TextLink href={send()} as="button">
-                            Click here to re-send the verification email.
+                            Send the verification email again.
                         </TextLink>
                     </p>
 

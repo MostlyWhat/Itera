@@ -14,8 +14,10 @@
 
 <script lang="ts">
     import { Form, Link, page } from '@inertiajs/svelte';
+    import Add from 'carbon-icons-svelte/lib/Add.svelte';
     import ChevronRight from 'carbon-icons-svelte/lib/ChevronRight.svelte';
     import AppHead from '@/components/AppHead.svelte';
+    import FormDialog from '@/components/FormDialog.svelte';
     import InputError from '@/components/InputError.svelte';
     import PointsMeter from '@/components/sprints/PointsMeter.svelte';
     import { Button } from '@/components/ui/button';
@@ -69,38 +71,51 @@
 
     const sundayOf = (monday: string) =>
         toDateString(addDays(parseDate(monday), 6));
+
+    // The plan form opens in a dialog. The list of sprints is the page.
+    const hasCurrent = $derived(sprints.some((sprint) => sprint.timing === 'current'));
+    let planning = $state(false);
 </script>
 
 <AppHead title="Sprints" />
 
 <div class="flex flex-col gap-8 px-4 py-8 sm:py-10">
-    <header class="space-y-1">
+    <header class="flex flex-wrap items-center justify-between gap-4">
         <h1 class="type-title">Sprints</h1>
-        <p class="max-w-prose text-sm text-muted-foreground">
-            A sprint is one Monday-to-Sunday week. Give it a goal and a story
-            point target, then choose the tasks that fit.
-        </p>
+        {#if freeWeeks.length > 0}
+            <Button onclick={() => (planning = true)}>
+                <Add class="size-4" />
+                Plan a sprint
+            </Button>
+        {/if}
     </header>
 
-    <section
-        class="rounded-lg border border-border bg-card p-4 sm:p-5"
-        aria-labelledby="plan-title"
-    >
-        <h2 id="plan-title" class="type-section mb-4">Plan a sprint</h2>
-
-        {#if freeWeeks.length === 0}
-            <p class="text-sm text-muted-foreground">
-                The next weeks already have sprints. Open one below to change
-                its plan.
+    {#if !hasCurrent && freeWeeks.length > 0}
+        <div
+            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-border px-4 py-4"
+        >
+            <p class="text-sm">
+                <span class="font-medium">This week has no sprint.</span>
+                <span class="text-muted-foreground">Plan it to see your tasks on the board.</span>
             </p>
-        {:else}
+            <Button variant="outline" onclick={() => (planning = true)}>Plan this week</Button>
+        </div>
+    {/if}
+
+    <FormDialog
+        bind:open={planning}
+        title="Plan a sprint"
+        description="Pick a week, a goal, and how many points fit. You choose the tasks next."
+        size="lg"
+    >
+
             <Form {...store.form(team)} class="flex flex-col gap-5">
                 {#snippet children({ errors, processing })}
                     <fieldset>
-                        <legend class="mb-2 text-xs font-medium text-muted-foreground">
+                        <legend class="mb-2 text-sm font-medium">
                             Week
                         </legend>
-                        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <div class="grid grid-cols-2 gap-2">
                             {#each freeWeeks as monday, index (monday)}
                                 <label
                                     class={cn(
@@ -130,7 +145,7 @@
                         <div class="flex flex-col gap-1.5">
                             <label
                                 for="sprint-goal"
-                                class="text-xs font-medium text-muted-foreground"
+                                class="text-sm font-medium"
                                 >Sprint goal</label
                             >
                             <Input
@@ -145,7 +160,7 @@
                         <div class="flex flex-col gap-1.5">
                             <label
                                 for="sprint-target"
-                                class="text-xs font-medium text-muted-foreground"
+                                class="text-sm font-medium"
                                 >Point target</label
                             >
                             <Input
@@ -161,18 +176,17 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                        <p class="text-xs text-muted-foreground">
-                            You choose the tasks on the next page.
-                        </p>
+                    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <Button type="button" variant="ghost" onclick={() => (planning = false)}>
+                            Cancel
+                        </Button>
                         <Button type="submit" disabled={processing}>
                             Create sprint
                         </Button>
                     </div>
                 {/snippet}
             </Form>
-        {/if}
-    </section>
+    </FormDialog>
 
     {#each groups as group (group.timing)}
         <section aria-labelledby={`group-${group.timing}`}>
@@ -200,7 +214,7 @@
                             <span class="flex min-w-0 flex-col">
                                 <span
                                     class={cn(
-                                        'truncate text-sm',
+                                        'wrap-break-word text-sm',
                                         !sprint.goal && 'text-muted-foreground',
                                     )}>{sprint.goal ?? 'No goal yet'}</span
                                 >

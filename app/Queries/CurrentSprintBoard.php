@@ -38,10 +38,12 @@ class CurrentSprintBoard
                 ->map(fn (Task $task) => [
                     'taskId' => $task->id,
                     'title' => $task->title,
+                    'description' => $task->description,
                     'points' => $task->story_points?->value,
                     'status' => $task->status->value,
                     'dueDate' => $task->due_date?->toDateString(),
                     'isOverdue' => $task->isOverdue(),
+                    'projectId' => $task->project->id,
                     'projectName' => $task->project->name,
                     'areaName' => $task->project->area->name,
                 ])

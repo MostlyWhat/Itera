@@ -10,7 +10,8 @@ use Illuminate\Validation\Rule;
 
 /**
  * Validate a new or edited Task. Story points must be a Fibonacci value from 1 to 21.
- * The deadline and the story points are optional.
+ * The description, the deadline, and the story points are optional. A request
+ * without a description keeps the current one.
  */
 class SaveTaskRequest extends FormRequest
 {
@@ -23,6 +24,7 @@ class SaveTaskRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:200'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'story_points' => ['nullable', 'integer', Rule::enum(StoryPoints::class)],
             'due_date' => ['nullable', 'date_format:Y-m-d'],
             'status' => ['sometimes', 'required', Rule::enum(TaskStatus::class)],
@@ -52,5 +54,10 @@ class SaveTaskRequest extends FormRequest
             'story_points' => $this->filled('story_points') ? $this->input('story_points') : null,
             'due_date' => $this->filled('due_date') ? $this->input('due_date') : null,
         ]);
+
+        if ($this->has('description')) {
+            $description = trim((string) $this->input('description'));
+            $this->merge(['description' => $description === '' ? null : $description]);
+        }
     }
 }

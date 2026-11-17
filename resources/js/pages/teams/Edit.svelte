@@ -337,7 +337,7 @@
                 >
                     <p class="font-medium">Warning</p>
                     <p class="text-sm">
-                        Please proceed with caution, this cannot be undone.
+                        You cannot undo this.
                     </p>
                 </div>
 

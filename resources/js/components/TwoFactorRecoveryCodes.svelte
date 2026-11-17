@@ -86,7 +86,7 @@
             {/if}
         </div>
         <div
-            class="relative overflow-hidden transition-all duration-300 {isRecoveryCodesVisible
+            class="relative overflow-hidden transition-opacity duration-200 {isRecoveryCodesVisible
                 ? 'h-auto opacity-100'
                 : 'h-0 opacity-0'}"
         >

@@ -30,7 +30,7 @@ function userWithBoard(): array
     $sprint = Sprint::factory()->for($user->currentTeam)->create(['week_start' => '2026-11-16', 'goal' => 'Hand in the lab report']);
 
     $tasks = [
-        Task::factory()->for($project)->create(['title' => 'Read the manual', 'status' => TaskStatus::Todo]),
+        Task::factory()->for($project)->create(['title' => 'Read the manual', 'description' => 'Chapter 2 only.', 'status' => TaskStatus::Todo]),
         Task::factory()->for($project)->create(['title' => 'Write the method', 'status' => TaskStatus::InProgress]),
         Task::factory()->for($project)->create(['title' => 'Book the lab', 'status' => TaskStatus::Done]),
     ];
@@ -43,7 +43,8 @@ function userWithBoard(): array
 }
 
 test('the dashboard shows the sprint tasks in to do, in progress, and done', function () {
-    [$user, $slug] = userWithBoard();
+    [$user, $slug, , $tasks] = userWithBoard();
+    $project = $tasks[0]->project;
 
     $this->actingAs($user)
         ->get(route('dashboard', $slug))
@@ -59,7 +60,9 @@ test('the dashboard shows the sprint tasks in to do, in progress, and done', fun
             ->where('board.cards.0.status', 'todo')
             ->where('board.cards.1.status', 'in_progress')
             ->where('board.cards.2.status', 'done')
-            ->where('board.cards.0.projectName', 'Lab report'));
+            ->where('board.cards.0.projectName', 'Lab report')
+            ->where('board.cards.0.projectId', $project->id)
+            ->where('board.cards.0.description', 'Chapter 2 only.'));
 });
 
 test('the dashboard has no board without a sprint this week', function () {
@@ -68,7 +71,24 @@ test('the dashboard has no board without a sprint this week', function () {
 
     $this->actingAs($user)
         ->get(route('dashboard', $user->currentTeam->slug))
-        ->assertInertia(fn (Assert $page) => $page->where('board', null));
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('board', null)
+            ->where('setup', ['hasProject' => false, 'hasTask' => false]));
+});
+
+test('the setup steps on the dashboard follow what the user has made', function () {
+    $user = User::factory()->create();
+    $project = Project::factory()->for(Area::factory()->for($user->currentTeam))->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard', $user->currentTeam->slug))
+        ->assertInertia(fn (Assert $page) => $page->where('setup', ['hasProject' => true, 'hasTask' => false]));
+
+    Task::factory()->for($project)->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard', $user->currentTeam->slug))
+        ->assertInertia(fn (Assert $page) => $page->where('setup', ['hasProject' => true, 'hasTask' => true]));
 });
 
 test('moving a card saves the status and the board shows it after a reload', function () {

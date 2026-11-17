@@ -86,7 +86,7 @@
                 {#each days as day (day)}
                     <span
                         aria-hidden="true"
-                        class="px-2 pt-3 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase sm:px-4"
+                        class="px-2 pt-3 text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase sm:px-4"
                     >
                         <span class="sm:hidden">{day.charAt(0)}</span>
                         <span class="hidden sm:inline">{day}</span>

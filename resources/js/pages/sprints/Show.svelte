@@ -26,24 +26,31 @@
 <script lang="ts">
     import { Form, page, router } from '@inertiajs/svelte';
     import Add from 'carbon-icons-svelte/lib/Add.svelte';
+    import CheckmarkFilled from 'carbon-icons-svelte/lib/CheckmarkFilled.svelte';
     import Close from 'carbon-icons-svelte/lib/Close.svelte';
+    import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
     import Search from 'carbon-icons-svelte/lib/Search.svelte';
+    import Undo from 'carbon-icons-svelte/lib/Undo.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
+    import FormDialog from '@/components/FormDialog.svelte';
     import InputError from '@/components/InputError.svelte';
     import PointsMeter from '@/components/sprints/PointsMeter.svelte';
-    import WeekStrip from '@/components/sprints/WeekStrip.svelte';
     import { Button } from '@/components/ui/button';
     import { Input } from '@/components/ui/input';
     import {
-        NativeSelect,
-        NativeSelectOptGroup,
-        NativeSelectOption,
-    } from '@/components/ui/native-select';
+        Select,
+        SelectContent,
+        SelectGroup,
+        SelectGroupHeading,
+        SelectItem,
+        SelectTrigger,
+    } from '@/components/ui/select';
     import { formatWeekRange, weekName } from '@/lib/dates';
     import { cn } from '@/lib/utils';
     import { update } from '@/routes/sprints';
     import { store as storeSprintTask } from '@/routes/sprints/tasks';
+    import { update as updateStatus } from '@/routes/tasks/status';
 
     type Candidate = {
         id: number;
@@ -95,6 +102,10 @@
     );
 
     let busy = $state(false);
+    // The goal and the new task are entered in dialogs, so the two lists
+    // below keep their place.
+    let editingGoal = $state(false);
+    let addingTask = $state(false);
     let filter = $state('');
 
     const committedIds = $derived(
@@ -118,16 +129,13 @@
                       .includes(query),
               );
     });
-    const backlogGroups = $derived.by(() => {
-        const byProject = new Map<string, Candidate[]>();
-
-        for (const task of filtered) {
-            const key = `${task.areaName} · ${task.projectName}`;
-            byProject.set(key, [...(byProject.get(key) ?? []), task]);
-        }
-
-        return [...byProject.entries()].map(([name, tasks]) => ({ name, tasks }));
-    });
+    // The new-task form: the project stays for the next task, the points reset.
+    // svelte-ignore state_referenced_locally
+    let newProject = $state(projects[0] ? String(projects[0].id) : '');
+    let newPoints = $state('');
+    const newProjectName = $derived(
+        projects.find((project) => String(project.id) === newProject)?.name ?? 'Project',
+    );
 
     const projectGroups = $derived.by(() => {
         const byArea = new Map<string, typeof projects>();
@@ -159,6 +167,20 @@
     const timingLabel = $derived(
         { current: 'This week', upcoming: 'Upcoming', past: 'Ended' }[sprint.timing],
     );
+    const statusLabels: Record<string, string> = {
+        todo: 'To Do',
+        in_progress: 'In Progress',
+        done: 'Done',
+    };
+
+    // A done task is locked in the sprint. The only action brings it back.
+    const reopen = (taskId: number) =>
+        router.patch(
+            updateStatus({ current_team: team, task: taskId }).url,
+            { status: 'todo' },
+            { preserveScroll: true },
+        );
+
     const pointsLabel = (points: number | null) =>
         points === null ? '– pts' : `${points} pts`;
 </script>
@@ -167,18 +189,31 @@
 
 <div class="flex flex-col gap-6 px-4 py-8 sm:py-10">
     <header class="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-        <div class="space-y-1.5">
+        <div class="min-w-0 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
                 <h1 class="type-title">{weekName(sprint.weekStart)}</h1>
-                <span
-                    class={cn(
-                        'rounded-sm px-1.5 py-0.5 text-[11px] font-medium',
-                        sprint.timing === 'past'
-                            ? 'bg-muted text-muted-foreground'
-                            : 'bg-accent text-accent-foreground',
-                    )}>{timingLabel}</span
-                >
+                {#if sprint.timing === 'past'}
+                    <span class="rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
+                        >{timingLabel}</span
+                    >
+                {/if}
             </div>
+            <p class="flex flex-wrap items-center gap-x-2 text-sm">
+                <span class={cn('wrap-break-word', !sprint.goal && 'text-muted-foreground')}
+                    >{sprint.goal ?? 'No goal yet'}</span
+                >
+                {#if sprint.editable}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 gap-1 px-1.5 text-muted-foreground hover:text-foreground"
+                        onclick={() => (editingGoal = true)}
+                    >
+                        <Edit class="size-3.5" />
+                        {sprint.goal ? 'Edit goal' : 'Add a goal'}
+                    </Button>
+                {/if}
+            </p>
             <p class="text-sm text-muted-foreground tabular-nums">
                 {formatWeekRange(sprint.weekStart, sprint.weekEnd)} · {sprint.taskCount}
                 {sprint.taskCount === 1 ? 'task' : 'tasks'}
@@ -191,161 +226,78 @@
         />
     </header>
 
-    <WeekStrip weekStart={sprint.weekStart} />
-
     {#if sprint.editable}
-        <Form
-            {...update.form({ current_team: team, sprint: sprint.id })}
-            options={{ preserveScroll: true }}
-            class="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-4"
-        >
-            {#snippet children({ processing, isDirty })}
-                <div class="flex flex-wrap items-end gap-3">
-                    <div class="flex min-w-0 flex-1 basis-64 flex-col gap-1.5">
-                        <label
-                            for="sprint-goal"
-                            class="text-xs font-medium text-muted-foreground"
-                            >Sprint goal</label
-                        >
-                        <Input
-                            id="sprint-goal"
-                            name="goal"
-                            value={sprint.goal ?? ''}
-                            maxlength={200}
-                            placeholder="What does this week need to achieve?"
-                            autocomplete="off"
-                        />
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label
-                            for="sprint-target"
-                            class="text-xs font-medium text-muted-foreground"
-                            >Point target</label
-                        >
-                        <Input
-                            id="sprint-target"
-                            name="target_points"
-                            type="number"
-                            min={1}
-                            max={999}
-                            inputmode="numeric"
-                            value={sprint.targetPoints === null ? '' : String(sprint.targetPoints)}
-                            class="w-28"
-                        />
-                    </div>
-                    <Button
-                        type="submit"
-                        variant={isDirty ? 'default' : 'outline'}
-                        disabled={processing || !isDirty}
-                    >
-                        Save goal
-                    </Button>
-                </div>
-                <InputError message={errors.goal ?? errors.target_points} />
-            {/snippet}
-        </Form>
 
         <div class="grid gap-6 lg:grid-cols-2 lg:items-start">
             <!-- The sprint: the work for this week. -->
             <section aria-labelledby="sprint-tasks" class="flex min-w-0 flex-col gap-3">
-                <h2 id="sprint-tasks" class="type-section">
-                    In this sprint
-                    <span class="font-normal text-muted-foreground tabular-nums"
-                        >({commitments.length})</span
-                    >
-                </h2>
+                <div class="flex min-h-8 items-center justify-between gap-3">
+                    <h2 id="sprint-tasks" class="type-section">
+                        In this sprint
+                        <span class="font-normal text-muted-foreground tabular-nums"
+                            >({commitments.length})</span
+                        >
+                    </h2>
+                    <Button variant="outline" size="sm" class="gap-1.5" onclick={() => (addingTask = true)}>
+                        <Add class="size-4" />
+                        New task
+                    </Button>
+                </div>
 
-                <Form
-                    {...storeSprintTask.form({ current_team: team, sprint: sprint.id })}
-                    options={{ preserveScroll: true }}
-                    resetOnSuccess={['title', 'story_points']}
-                    class="rounded-lg border border-dashed border-border p-3"
-                >
-                    {#snippet children({ errors: formErrors, processing })}
-                        <p class="mb-2 text-xs font-medium text-muted-foreground">
-                            New task in this sprint
-                        </p>
-                        {#if projects.length === 0}
-                            <p class="text-sm text-muted-foreground">
-                                Create a project first, on the Areas page.
-                            </p>
-                        {:else}
-                            <div class="flex flex-col gap-2">
-                                <label for="new-task-title" class="sr-only">Task title</label>
-                                <Input
-                                    id="new-task-title"
-                                    name="title"
-                                    maxlength={200}
-                                    placeholder="What needs to be done?"
-                                    autocomplete="off"
-                                    required
-                                />
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <label for="new-task-project" class="sr-only">Project</label>
-                                    <NativeSelect
-                                        id="new-task-project"
-                                        name="project_id"
-                                        class="min-w-0 flex-1 basis-40"
-                                    >
-                                        {#each projectGroups as [areaName, areaProjects] (areaName)}
-                                            <NativeSelectOptGroup label={areaName}>
-                                                {#each areaProjects as project (project.id)}
-                                                    <NativeSelectOption value={String(project.id)}
-                                                        >{project.name}</NativeSelectOption
-                                                    >
-                                                {/each}
-                                            </NativeSelectOptGroup>
-                                        {/each}
-                                    </NativeSelect>
-                                    <label for="new-task-points" class="sr-only">Story points</label>
-                                    <NativeSelect id="new-task-points" name="story_points" class="w-28">
-                                        <NativeSelectOption value="">– pts</NativeSelectOption>
-                                        {#each storyPointOptions as points (points)}
-                                            <NativeSelectOption value={String(points)}
-                                                >{points} pts</NativeSelectOption
-                                            >
-                                        {/each}
-                                    </NativeSelect>
-                                    <Button type="submit" disabled={processing}>
-                                        <Add class="size-4" />
-                                        Add
-                                    </Button>
-                                </div>
-                                <InputError
-                                    message={formErrors.title ??
-                                        formErrors.project_id ??
-                                        formErrors.story_points}
-                                />
-                            </div>
-                        {/if}
-                    {/snippet}
-                </Form>
 
                 {#if commitments.length === 0}
                     <p
                         class="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground"
                     >
-                        No tasks yet. Add a new task above, or add one from the
-                        backlog.
+                        No tasks yet. Add tasks from the backlog, or use New task.
                     </p>
                 {:else}
                     <ul class="overflow-hidden rounded-lg border border-border bg-card">
                         {#each commitments as commitment (commitment.id)}
+                            {@const done = commitment.status === 'done'}
                             <li
                                 class="flex min-h-12 items-center gap-3 border-t border-border py-2 pr-2 pl-4 first:border-t-0"
                             >
                                 <span class="flex min-w-0 flex-1 flex-col">
-                                    <span class="truncate text-sm">{commitment.title}</span>
-                                    {#if commitment.projectName}
-                                        <span class="truncate text-xs text-muted-foreground"
-                                            >{commitment.projectName}</span
-                                        >
-                                    {/if}
+                                    <span
+                                        class={cn(
+                                            'text-sm wrap-break-word',
+                                            done && 'text-muted-foreground line-through decoration-muted-foreground/60',
+                                        )}>{commitment.title}</span
+                                    >
+                                    <span class="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                                        {#if commitment.projectName}
+                                            <span class="wrap-break-word">{commitment.projectName}</span>
+                                        {/if}
+                                        {#if commitment.status}
+                                            <span
+                                                class={cn(
+                                                    'flex items-center gap-1 font-medium',
+                                                    commitment.status === 'in_progress' && 'text-accent-foreground',
+                                                    done && 'text-primary',
+                                                )}
+                                            >
+                                                {#if done}<CheckmarkFilled class="size-3.5" />{/if}
+                                                {statusLabels[commitment.status]}
+                                            </span>
+                                        {/if}
+                                    </span>
                                 </span>
                                 <span class="shrink-0 text-xs text-muted-foreground tabular-nums"
                                     >{pointsLabel(commitment.points)}</span
                                 >
-                                {#if commitment.taskId !== null}
+                                {#if commitment.taskId !== null && done}
+                                    {@const taskId = commitment.taskId}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        class="h-8 shrink-0 gap-1.5 text-muted-foreground hover:text-foreground"
+                                        onclick={() => reopen(taskId)}
+                                    >
+                                        <Undo class="size-4" />
+                                        Move to To Do
+                                    </Button>
+                                {:else if commitment.taskId !== null}
                                     {@const taskId = commitment.taskId}
                                     <Button
                                         variant="ghost"
@@ -367,7 +319,7 @@
 
             <!-- The backlog: open tasks to pull into the sprint. -->
             <section aria-labelledby="backlog-title" class="flex min-w-0 flex-col gap-3">
-                <h2 id="backlog-title" class="type-section">
+                <h2 id="backlog-title" class="flex min-h-8 items-center gap-1 type-section">
                     Backlog
                     <span class="font-normal text-muted-foreground tabular-nums"
                         >({backlog.length})</span
@@ -394,43 +346,36 @@
                     >
                         The backlog is empty. All open tasks are in a sprint.
                     </p>
-                {:else if backlogGroups.length === 0}
+                {:else if filtered.length === 0}
                     <p class="px-1 text-sm text-muted-foreground">
                         No task matches "{filter}".
                     </p>
-                {/if}
-
-                {#each backlogGroups as group (group.name)}
-                    <div class="overflow-hidden rounded-lg border border-border bg-card">
-                        <h3
-                            class="border-b border-border bg-muted/30 px-4 py-2 text-xs font-medium text-muted-foreground"
-                        >
-                            {group.name}
-                        </h3>
-                        <ul>
-                            {#each group.tasks as task (task.id)}
-                                {@const taken = task.takenBy !== null}
-                                <li
-                                    class={cn(
-                                        'flex min-h-12 items-center gap-3 border-t border-border py-2 pr-2 pl-4 first:border-t-0',
-                                        taken && 'opacity-60',
-                                    )}
-                                >
-                                    <span class="flex min-w-0 flex-1 flex-col">
-                                        <span class="truncate text-sm">{task.title}</span>
+                {:else}
+                    <ul class="overflow-hidden rounded-lg border border-border bg-card">
+                        {#each filtered as task (task.id)}
+                            {@const taken = task.takenBy !== null}
+                            <li
+                                class={cn(
+                                    'flex min-h-12 items-center gap-3 border-t border-border py-2 pr-2 pl-4 first:border-t-0',
+                                    taken && 'opacity-60',
+                                )}
+                            >
+                                <span class="flex min-w-0 flex-1 flex-col">
+                                    <span class="text-sm wrap-break-word">{task.title}</span>
+                                    <span
+                                        class="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground tabular-nums"
+                                    >
+                                        <span class="wrap-break-word">{task.projectName}</span>
                                         {#if taken && task.takenBy}
-                                            <span class="text-xs text-muted-foreground"
-                                                >In the sprint of {formatShortDate(task.takenBy)}</span
-                                            >
+                                            <span><span aria-hidden="true">·</span> In the sprint of {formatShortDate(task.takenBy)}</span>
                                         {:else if task.dueDate}
                                             <span
                                                 class={cn(
-                                                    'flex items-center gap-1 text-xs tabular-nums',
-                                                    task.isOverdue
-                                                        ? 'font-medium text-destructive'
-                                                        : 'text-muted-foreground',
+                                                    'flex items-center gap-1',
+                                                    task.isOverdue && 'font-medium text-destructive',
                                                 )}
                                             >
+                                                <span aria-hidden="true">·</span>
                                                 {#if task.isOverdue}
                                                     <WarningAltFilled class="size-3.5" />
                                                     Overdue,
@@ -441,25 +386,25 @@
                                             </span>
                                         {/if}
                                     </span>
-                                    <span class="shrink-0 text-xs text-muted-foreground tabular-nums"
-                                        >{pointsLabel(task.points)}</span
-                                    >
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        class="h-8 shrink-0"
-                                        aria-label={`Add ${task.title} to the sprint`}
-                                        disabled={busy || taken}
-                                        onclick={() => addExisting(task.id)}
-                                    >
-                                        <Add class="size-4" />
-                                        Add
-                                    </Button>
-                                </li>
-                            {/each}
-                        </ul>
-                    </div>
-                {/each}
+                                </span>
+                                <span class="shrink-0 text-xs text-muted-foreground tabular-nums"
+                                    >{pointsLabel(task.points)}</span
+                                >
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="h-8 shrink-0"
+                                    aria-label={`Add ${task.title} to the sprint`}
+                                    disabled={busy || taken}
+                                    onclick={() => addExisting(task.id)}
+                                >
+                                    <Add class="size-4" />
+                                    Add
+                                </Button>
+                            </li>
+                        {/each}
+                    </ul>
+                {/if}
             </section>
         </div>
     {:else}
@@ -475,7 +420,7 @@
                     <li
                         class="flex min-h-11 items-center justify-between gap-3 border-t border-border px-4 py-2 text-sm first:border-t-0"
                     >
-                        <span class="min-w-0 truncate">{commitment.title}</span>
+                        <span class="min-w-0 wrap-break-word">{commitment.title}</span>
                         <span class="shrink-0 text-xs text-muted-foreground tabular-nums"
                             >{pointsLabel(commitment.points)}</span
                         >
@@ -489,3 +434,138 @@
         </section>
     {/if}
 </div>
+
+{#if sprint.editable}
+    <FormDialog
+        bind:open={editingGoal}
+        title={sprint.goal ? 'Edit sprint goal' : 'Add a sprint goal'}
+        description="Say what this week needs to achieve, and how many points fit."
+    >
+        <Form
+            {...update.form({ current_team: team, sprint: sprint.id })}
+            options={{ preserveScroll: true }}
+            onSuccess={() => (editingGoal = false)}
+            class="flex flex-col gap-5"
+        >
+            {#snippet children({ processing })}
+                <div class="flex flex-col gap-2">
+                    <label for="sprint-goal" class="text-sm font-medium">Sprint goal</label>
+                    <Input
+                        id="sprint-goal"
+                        name="goal"
+                        value={sprint.goal ?? ''}
+                        maxlength={200}
+                        placeholder="For example: Hand in the lab report"
+                        autocomplete="off"
+                    />
+                    <InputError message={errors.goal} />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label for="sprint-target" class="text-sm font-medium">Point target</label>
+                    <Input
+                        id="sprint-target"
+                        name="target_points"
+                        type="number"
+                        min={1}
+                        max={999}
+                        inputmode="numeric"
+                        value={sprint.targetPoints === null ? '' : String(sprint.targetPoints)}
+                        placeholder="For example 13"
+                        class="w-32"
+                    />
+                    <InputError message={errors.target_points} />
+                </div>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <Button type="button" variant="ghost" onclick={() => (editingGoal = false)}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" disabled={processing}>Save goal</Button>
+                </div>
+            {/snippet}
+        </Form>
+    </FormDialog>
+
+    <FormDialog
+        bind:open={addingTask}
+        title="New task in this sprint"
+        description="The task goes into its project and into this week."
+    >
+        {#if projects.length === 0}
+            <p class="text-sm text-muted-foreground">
+                Create a project first, on the Projects page.
+            </p>
+        {:else}
+            <Form
+                {...storeSprintTask.form({ current_team: team, sprint: sprint.id })}
+                options={{ preserveScroll: true }}
+                resetOnSuccess
+                onSuccess={() => {
+                    newPoints = '';
+                    addingTask = false;
+                }}
+                class="flex flex-col gap-5"
+            >
+                {#snippet children({ errors: formErrors, processing })}
+                    <div class="flex flex-col gap-2">
+                        <label for="new-task-title" class="text-sm font-medium">Title</label>
+                        <Input
+                            id="new-task-title"
+                            name="title"
+                            maxlength={200}
+                            placeholder="For example: Write the method section"
+                            autocomplete="off"
+                            required
+                            aria-invalid={formErrors.title ? 'true' : undefined}
+                        />
+                        <InputError message={formErrors.title} />
+                    </div>
+                    <div class="grid gap-5 sm:grid-cols-[minmax(0,1fr)_8rem]">
+                        <div class="flex min-w-0 flex-col gap-2">
+                            <label for="new-task-project" class="text-sm font-medium">Project</label>
+                            <Select type="single" name="project_id" bind:value={newProject}>
+                                <SelectTrigger id="new-task-project" class="w-full">
+                                    <span class="truncate">{newProjectName}</span>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {#each projectGroups as [areaName, areaProjects] (areaName)}
+                                        <SelectGroup>
+                                            <SelectGroupHeading>{areaName}</SelectGroupHeading>
+                                            {#each areaProjects as project (project.id)}
+                                                <SelectItem value={String(project.id)} label={project.name} />
+                                            {/each}
+                                        </SelectGroup>
+                                    {/each}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={formErrors.project_id} />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="new-task-points" class="text-sm font-medium">Story points</label>
+                            <Select type="single" name="story_points" bind:value={newPoints}>
+                                <SelectTrigger
+                                    id="new-task-points"
+                                    class={cn('w-full tabular-nums', newPoints === '' && 'text-muted-foreground')}
+                                >
+                                    {newPoints === '' ? 'None' : `${newPoints} pts`}
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="" label="No points" />
+                                    {#each storyPointOptions as points (points)}
+                                        <SelectItem value={String(points)} label={`${points} pts`} />
+                                    {/each}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={formErrors.story_points} />
+                        </div>
+                    </div>
+                    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <Button type="button" variant="ghost" onclick={() => (addingTask = false)}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={processing}>Add task</Button>
+                    </div>
+                {/snippet}
+            </Form>
+        {/if}
+    </FormDialog>
+{/if}

@@ -16,19 +16,25 @@
 
 <script lang="ts">
     import { Link, page, router } from '@inertiajs/svelte';
+    import { flip } from 'svelte/animate';
+    import { cubicOut } from 'svelte/easing';
+    import { prefersReducedMotion } from 'svelte/motion';
+    import { crossfade, fade } from 'svelte/transition';
     import ArrowLeft from 'carbon-icons-svelte/lib/ArrowLeft.svelte';
     import ArrowRight from 'carbon-icons-svelte/lib/ArrowRight.svelte';
     import Calendar from 'carbon-icons-svelte/lib/Calendar.svelte';
+    import CheckmarkFilled from 'carbon-icons-svelte/lib/CheckmarkFilled.svelte';
     import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
+    import FormDialog from '@/components/FormDialog.svelte';
     import PendingInvitationsModal from '@/components/PendingInvitationsModal.svelte';
     import PointsMeter from '@/components/sprints/PointsMeter.svelte';
-    import WeekStrip from '@/components/sprints/WeekStrip.svelte';
     import { Button, buttonVariants } from '@/components/ui/button';
     import { formatShortDate, formatWeekRange } from '@/lib/dates';
     import { cn } from '@/lib/utils';
     import { update as updateStatus } from '@/routes/tasks/status';
+    import { index as projectsIndex, show as showProject } from '@/routes/projects';
     import { index as sprintsIndex, show as showSprint } from '@/routes/sprints';
     import type { DashboardInvitation } from '@/types';
 
@@ -37,11 +43,13 @@
     type Card = {
         taskId: number;
         title: string;
+        description: string | null;
         points: number | null;
         status: Status;
         dueDate: string | null;
         isOverdue: boolean;
         projectName: string;
+        projectId: number;
         areaName: string;
     };
 
@@ -61,9 +69,11 @@
     let {
         pendingInvitations = [],
         board = null,
+        setup = null,
     }: {
         pendingInvitations?: DashboardInvitation[];
         board?: Board | null;
+        setup?: { hasProject: boolean; hasTask: boolean } | null;
     } = $props();
 
     const team = $derived((page.props.currentTeam as Team).slug);
@@ -76,6 +86,32 @@
     $effect(() => {
         cards = board ? board.cards.map((card) => ({ ...card })) : [];
     });
+
+    // A moved card travels from its old column to the new one, so the eye
+    // can follow it. Under reduced motion it fades out and in instead.
+    const [crossSend, crossReceive] = crossfade({
+        duration: 200,
+        easing: cubicOut,
+        fallback: (node) => fade(node, { duration: 150 }),
+    });
+    const send = (node: Element, params: { key: number }) =>
+        prefersReducedMotion.current
+            ? () => fade(node, { duration: 150 })
+            : crossSend(node, params);
+    const receive = (node: Element, params: { key: number }) =>
+        prefersReducedMotion.current
+            ? () => fade(node, { duration: 150 })
+            : crossReceive(node, params);
+    const flipDuration = () => (prefersReducedMotion.current ? 0 : 200);
+
+    // A click on a card shows the whole task, description included.
+    let detailId = $state<number | null>(null);
+    let detailOpen = $state(false);
+    const detail = $derived(cards.find((card) => card.taskId === detailId) ?? null);
+    const openDetail = (card: Card) => {
+        detailId = card.taskId;
+        detailOpen = true;
+    };
 
     let dragging = $state<number | null>(null);
     let dropTarget = $state<Status | null>(null);
@@ -162,12 +198,10 @@
                     class={cn(buttonVariants({ variant: 'outline' }), 'gap-1.5')}
                 >
                     <Edit class="size-4" />
-                    Plan sprint
+                    Edit sprint
                 </Link>
             </div>
         </header>
-
-        <WeekStrip weekStart={board.sprint.weekStart} />
 
         <p class="sr-only" aria-live="polite">{announcement}</p>
 
@@ -194,7 +228,7 @@
                     <section
                         aria-labelledby={`column-${column.status}`}
                         class={cn(
-                            'flex min-h-48 flex-col rounded-lg border bg-muted/30 transition-colors',
+                            'flex flex-col rounded-xl border bg-muted/30 transition-colors md:min-h-48',
                             dropTarget === column.status
                                 ? 'border-primary bg-accent/60'
                                 : 'border-border',
@@ -214,7 +248,7 @@
                         }}
                     >
                         <header
-                            class="flex items-baseline justify-between gap-2 border-b border-border px-3 py-2.5"
+                            class="flex items-baseline justify-between gap-2 border-b border-border px-4.5 py-2.5"
                         >
                             <h2 id={`column-${column.status}`} class="text-sm font-semibold">
                                 {column.label}
@@ -227,39 +261,55 @@
                             >
                         </header>
 
-                        <ul class="flex flex-col gap-2 p-2">
+                        <ul class="flex flex-col gap-1.5 p-1.5">
                             {#each items as card (card.taskId)}
+                                <!-- The title button is the keyboard path to the details. -->
+                                <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
                                 <li
+                                    in:receive={{ key: card.taskId }}
+                                    out:send={{ key: card.taskId }}
+                                    animate:flip={{ duration: flipDuration }}
                                     draggable="true"
                                     ondragstart={(event: DragEvent) => {
                                         dragging = card.taskId;
                                         event.dataTransfer?.setData('text/plain', String(card.taskId));
+                                    }}
+                                    onclick={(event: MouseEvent) => {
+                                        // The arrows and the title button do their own work.
+                                        if (!(event.target as HTMLElement).closest('button')) {
+                                            openDetail(card);
+                                        }
                                     }}
                                     ondragend={() => {
                                         dragging = null;
                                         dropTarget = null;
                                     }}
                                     class={cn(
-                                        'group/card flex cursor-grab flex-col gap-2 rounded-md border border-border bg-card p-3 shadow-xs transition-[opacity,box-shadow] hover:shadow-sm active:cursor-grabbing',
+                                        'group/card relative flex cursor-grab flex-col gap-2 rounded-md border border-border bg-card p-3 shadow-xs transition-[opacity,box-shadow] has-[button:focus-visible]:ring-3 has-[button:focus-visible]:ring-ring/50 hover:shadow-sm active:cursor-grabbing',
                                         dragging === card.taskId && 'opacity-40',
                                     )}
                                 >
                                     <div class="flex items-start justify-between gap-2">
-                                        <span
+                                        <button
+                                            type="button"
+                                            onclick={() => openDetail(card)}
                                             class={cn(
-                                                'text-sm leading-snug',
+                                                'text-start text-sm leading-snug outline-none',
                                                 card.status === 'done' &&
                                                     'text-muted-foreground line-through decoration-muted-foreground/60',
-                                            )}>{card.title}</span
+                                            )}
                                         >
+                                            {card.title}
+                                            <span class="sr-only">, show details</span>
+                                        </button>
                                         <span
-                                            class="shrink-0 rounded-sm border border-border px-1.5 text-[11px] text-muted-foreground tabular-nums"
+                                            class="shrink-0 rounded-sm border border-border px-1.5 text-xs text-muted-foreground tabular-nums"
                                             >{card.points === null ? '–' : card.points}</span
                                         >
                                     </div>
                                     <div class="flex items-center justify-between gap-2">
-                                        <span class="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                                            <span class="truncate">{card.projectName}</span>
+                                        <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                            <span class="wrap-break-word">{card.projectName}</span>
                                             {#if card.dueDate && card.status !== 'done'}
                                                 <span
                                                     class={cn(
@@ -278,7 +328,9 @@
                                             {/if}
                                         </span>
                                         <!-- Keyboard and touch alternative to drag and drop. -->
-                                        <span class="flex shrink-0 items-center gap-0.5">
+                                        <span
+                                            class="relative z-10 flex shrink-0 items-center gap-0.5 motion-safe:transition-opacity [@media(hover:hover)]:opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100"
+                                        >
                                             {#if columnIndex > 0}
                                                 <Button
                                                     variant="ghost"
@@ -308,7 +360,7 @@
                                 <li
                                     class="rounded-md border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground"
                                 >
-                                    Drop a task here
+                                    No tasks
                                 </li>
                             {/each}
                         </ul>
@@ -317,31 +369,117 @@
             </div>
         {/if}
     {:else}
+        {@const steps = [
+            {
+                title: 'Create a project',
+                text: 'Group your work by class or job, then add a project such as a lab report.',
+                done: setup?.hasProject ?? false,
+                href: projectsIndex(team),
+                action: 'Open Projects',
+            },
+            {
+                title: 'Add tasks with story points',
+                text: 'Write down what the project needs. Points show how big each task is.',
+                done: setup?.hasTask ?? false,
+                href: projectsIndex(team),
+                action: 'Add tasks',
+            },
+            {
+                title: 'Plan this week',
+                text: 'Choose the tasks that fit this week. They show here as a board.',
+                done: false,
+                href: sprintsIndex(team),
+                action: 'Plan this week',
+            },
+        ]}
+        {@const next = steps.findIndex((step) => !step.done)}
         <header class="space-y-1">
             <h1 class="type-title">This week</h1>
             <p class="text-sm text-muted-foreground">
-                Your sprint board shows here when this week has a sprint.
+                No sprint yet. Three steps get you to your board.
             </p>
         </header>
-        <div
-            class="flex flex-col items-start gap-4 rounded-lg border border-dashed border-border px-6 py-10 sm:items-center sm:text-center"
-        >
-            <span
-                class="flex size-10 items-center justify-center rounded-md bg-accent text-accent-foreground"
-                aria-hidden="true"
+        <ol class="max-w-xl overflow-hidden rounded-lg border border-border bg-card">
+            {#each steps as step, index (step.title)}
+                <li
+                    class={cn(
+                        'flex gap-4 border-t border-border px-4 py-4 first:border-t-0',
+                        index === next && 'bg-accent/40',
+                    )}
+                >
+                    <span
+                        class={cn(
+                            'flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium tabular-nums',
+                            step.done
+                                ? 'text-primary'
+                                : index === next
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'border border-border text-muted-foreground',
+                        )}
+                    >
+                        {#if step.done}
+                            <CheckmarkFilled class="size-6" />
+                            <span class="sr-only">Done:</span>
+                        {:else}
+                            {index + 1}
+                        {/if}
+                    </span>
+                    <div class="flex min-w-0 flex-1 flex-col gap-1">
+                        <h2
+                            class={cn(
+                                'text-sm font-medium',
+                                step.done && 'text-muted-foreground line-through decoration-muted-foreground/60',
+                            )}
+                        >
+                            {step.title}
+                        </h2>
+                        {#if index === next}
+                            <p class="text-sm text-muted-foreground">{step.text}</p>
+                            <Link href={step.href} class={cn(buttonVariants({ size: 'sm' }), 'mt-2 w-fit')}>
+                                {step.action}
+                            </Link>
+                        {/if}
+                    </div>
+                </li>
+            {/each}
+        </ol>
+    {/if}
+</div>
+
+<FormDialog bind:open={detailOpen} title={detail?.title ?? 'Task'} size="lg">
+    {#if detail}
+        <dl class="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm">
+            <dt class="text-muted-foreground">Status</dt>
+            <dd>{labelOf(detail.status)}</dd>
+            <dt class="text-muted-foreground">Project</dt>
+            <dd class="wrap-break-word">{detail.projectName} · {detail.areaName}</dd>
+            <dt class="text-muted-foreground">Story points</dt>
+            <dd class="tabular-nums">{detail.points ?? 'None'}</dd>
+            <dt class="text-muted-foreground">Deadline</dt>
+            <dd class={cn('tabular-nums', detail.isOverdue && 'font-medium text-destructive')}>
+                {#if detail.dueDate}
+                    {formatShortDate(detail.dueDate)}{detail.isOverdue ? ', overdue' : ''}
+                {:else}
+                    None
+                {/if}
+            </dd>
+        </dl>
+        <div class="flex flex-col gap-2">
+            <h3 class="text-sm font-medium">Description</h3>
+            {#if detail.description}
+                <p class="max-h-72 overflow-y-auto text-sm whitespace-pre-line wrap-break-word text-muted-foreground">{detail.description}</p>
+            {:else}
+                <p class="text-sm text-muted-foreground">No description.</p>
+            {/if}
+        </div>
+        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onclick={() => (detailOpen = false)}>Close</Button>
+            <Link
+                href={showProject({ current_team: team, project: detail.projectId })}
+                class={buttonVariants({ variant: 'outline' })}
             >
-                <Calendar class="size-5" />
-            </span>
-            <div class="space-y-1">
-                <h2 class="type-section">No sprint this week</h2>
-                <p class="max-w-sm text-sm text-muted-foreground">
-                    Plan a sprint with a goal and the tasks that fit. Then
-                    track them here in To Do, In Progress, and Done.
-                </p>
-            </div>
-            <Link href={sprintsIndex(team)} class={buttonVariants()}>
-                Plan this week
+                Open the project
             </Link>
         </div>
     {/if}
-</div>
+</FormDialog>
