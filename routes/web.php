@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Areas\ArchiveController;
 use App\Http\Controllers\Areas\AreaController;
 use App\Http\Controllers\Areas\ProjectController;
 use App\Http\Controllers\DashboardController;
@@ -31,6 +32,10 @@ Route::prefix('{current_team}')
 
         // Tasks (ITERA-03)
         Route::get('projects', [TaskController::class, 'projects'])->name('projects.index');
+        Route::get('archive', ArchiveController::class)->name('archive');
+
+        // Guide to the method and the app
+        Route::inertia('guide', 'Guide')->name('guide');
         Route::get('projects/{project}', [TaskController::class, 'index'])->name('projects.show');
         Route::post('projects/{project}/tasks', [TaskController::class, 'store'])->name('tasks.store');
         Route::patch('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');

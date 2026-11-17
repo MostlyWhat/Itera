@@ -135,3 +135,21 @@ test('users cannot open the areas page of another team', function () {
         ->get(route('areas.index', $otherTeam->slug))
         ->assertForbidden();
 });
+
+test('the archive page lists the archived areas and projects with their restore actions', function () {
+    $user = User::factory()->create();
+    $area = Area::factory()->for($user->currentTeam)->create(['name' => 'Biology 201']);
+    Project::factory()->for($area)->archived()->create(['name' => 'Old quiz']);
+    Area::factory()->for($user->currentTeam)->archived()->create(['name' => 'Summer job']);
+    Area::factory()->archived()->create(['name' => 'Someone else']);
+
+    $this->actingAs($user)
+        ->get(route('archive', $user->currentTeam->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('archive/Index')
+            ->has('archivedAreas', 1)
+            ->where('archivedAreas.0.name', 'Summer job')
+            ->has('archivedProjects', 1)
+            ->where('archivedProjects.0.name', 'Old quiz'));
+});

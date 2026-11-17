@@ -16,27 +16,23 @@
 <script lang="ts">
     import { Link, router } from '@inertiajs/svelte';
     import Add from 'carbon-icons-svelte/lib/Add.svelte';
-    import ChevronRight from 'carbon-icons-svelte/lib/ChevronRight.svelte';
-    import Undo from 'carbon-icons-svelte/lib/Undo.svelte';
+    import Archive from 'carbon-icons-svelte/lib/Archive.svelte';
     import RowActions from '@/components/areas/RowActions.svelte';
     import NameDialog from '@/components/NameDialog.svelte';
+    import AreaFilter from '@/components/projects/AreaFilter.svelte';
     import { Button } from '@/components/ui/button';
     import { cn } from '@/lib/utils';
+    import { archive as archiveIndex } from '@/routes';
     import {
         archive as archiveArea,
         store as storeArea,
-        unarchive as unarchiveArea,
         update as updateArea,
     } from '@/routes/areas';
-    import {
-        show as showProject,
-        store as storeProject,
-        unarchive as unarchiveProject,
-    } from '@/routes/projects';
+    import { show as showProject, store as storeProject } from '@/routes/projects';
 
-    // The project list of the Projects page, grouped by Area. Areas are
-    // created, renamed, and archived here. A Project is renamed and archived
-    // on its own page, so a project row is only a link.
+    // The project list of the Projects page, grouped by Area. The area filter
+    // picks which Areas show. Areas are created, renamed, and archived here.
+    // A Project is renamed and archived on its own page.
     let {
         navigation,
         team,
@@ -49,6 +45,41 @@
         onNavigate?: () => void;
     } = $props();
 
+    // The hidden Areas are a per-browser choice. Storage can be blocked, so
+    // every read and write is guarded and the list works without it.
+    const storageKey = $derived(`itera.hidden-areas.${team}`);
+    const readHidden = (key: string): number[] => {
+        try {
+            const value = JSON.parse(localStorage.getItem(key) ?? '[]');
+
+            return Array.isArray(value) ? value.filter((id) => typeof id === 'number') : [];
+        } catch {
+            return [];
+        }
+    };
+    // svelte-ignore state_referenced_locally
+    let hidden = $state<number[]>(readHidden(storageKey));
+    const saveHidden = (next: number[]) => {
+        hidden = next;
+
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(next));
+        } catch {
+            // The choice lasts for this page only.
+        }
+    };
+    const toggleArea = (id: number) =>
+        saveHidden(hidden.includes(id) ? hidden.filter((value) => value !== id) : [...hidden, id]);
+
+    // The Area of the open Project always shows, so the user never loses it.
+    const visibleAreas = $derived(
+        navigation.areas.filter(
+            (area) =>
+                !hidden.includes(area.id) ||
+                area.projects.some((project) => project.id === currentId),
+        ),
+    );
+
     // One name dialog for the three actions. `area` is the Area it acts on.
     type NameAction = 'new-area' | 'rename-area' | 'new-project';
     let dialog = $state<{ action: NameAction; area?: { id: number; name: string } }>({
@@ -60,12 +91,6 @@
         dialogOpen = true;
     };
 
-    const visit = (definition: { url: string; method: 'post' | 'delete' }) =>
-        router.visit(definition.url, {
-            method: definition.method,
-            preserveScroll: true,
-        });
-
     const archivedCount = $derived(
         navigation.archivedAreas.length + navigation.archivedProjects.length,
     );
@@ -74,36 +99,51 @@
     // area. Touch screens always show them.
     const reveal =
         '[@media(hover:hover)]:opacity-0 group-hover/area:opacity-100 group-focus-within/area:opacity-100 has-data-[state=open]:opacity-100';
+
+    // Counts sit in one fixed-width column, with or without the red fill.
+    const count = 'flex h-5 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-xs tabular-nums';
 </script>
 
 <nav aria-label="Projects" class="flex flex-col gap-6">
-    {#each navigation.areas as area (area.id)}
+    <AreaFilter
+        areas={navigation.areas}
+        {hidden}
+        onToggle={toggleArea}
+        onShowAll={() => saveHidden([])}
+        onNewArea={() => ask('new-area')}
+    />
+
+    {#each visibleAreas as area (area.id)}
         <section aria-labelledby={`area-${area.id}`} class="group/area">
-                <div class="flex min-h-8 items-center gap-1 pl-2">
-                    <h2
-                        id={`area-${area.id}`}
-                        class="min-w-0 flex-1 text-xs font-medium tracking-[0.06em] wrap-break-word text-muted-foreground uppercase"
+            <div class="flex min-h-8 items-center gap-1 pl-2">
+                <h2
+                    id={`area-${area.id}`}
+                    class="min-w-0 flex-1 text-xs font-medium tracking-[0.06em] wrap-break-word text-muted-foreground uppercase"
+                >
+                    {area.name}
+                </h2>
+                <span class={cn('flex items-center', reveal)}>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        class="size-7 text-muted-foreground hover:text-foreground"
+                        aria-label={`Add a project to ${area.name}`}
+                        onclick={() => ask('new-project', area)}
                     >
-                        {area.name}
-                    </h2>
-                    <span class={cn('flex items-center', reveal)}>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            class="size-7 text-muted-foreground hover:text-foreground"
-                            aria-label={`Add a project to ${area.name}`}
-                            onclick={() => ask('new-project', area)}
-                        >
-                            <Add class="size-4" />
-                        </Button>
-                        <RowActions
-                            label={area.name}
-                            onRename={() => ask('rename-area', area)}
-                            onArchive={() =>
-                                visit(archiveArea({ current_team: team, area: area.id }))}
-                        />
-                    </span>
-                </div>
+                        <Add class="size-4" />
+                    </Button>
+                    <RowActions
+                        label={area.name}
+                        onRename={() => ask('rename-area', area)}
+                        onArchive={() =>
+                            router.post(
+                                archiveArea({ current_team: team, area: area.id }).url,
+                                {},
+                                { preserveScroll: true },
+                            )}
+                    />
+                </span>
+            </div>
 
             <ul class="mt-1 flex flex-col gap-0.5">
                 {#each area.projects as project (project.id)}
@@ -123,23 +163,19 @@
                         >
                             <span class="min-w-0 flex-1 wrap-break-word">{project.name}</span>
                             {#if project.overdueTasks > 0}
-                                <span
-                                    class="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive/10 px-1.5 text-xs font-medium text-destructive tabular-nums"
-                                >
+                                <span class={cn(count, 'bg-destructive/10 font-medium text-destructive')}>
                                     {project.overdueTasks}
                                     <span class="sr-only">overdue</span>
                                 </span>
                             {:else if project.openTasks > 0}
-                                <span class="text-xs text-muted-foreground tabular-nums">
+                                <span class={cn(count, 'text-muted-foreground')}>
                                     {project.openTasks}
                                     <span class="sr-only">open</span>
                                 </span>
                             {/if}
                         </Link>
                     </li>
-                {/each}
-
-                {#if area.projects.length === 0}
+                {:else}
                     <li>
                         <button
                             type="button"
@@ -150,75 +186,28 @@
                             Add a project
                         </button>
                     </li>
-                {/if}
+                {/each}
             </ul>
         </section>
+    {:else}
+        {#if navigation.areas.length > 0}
+            <p class="px-2 text-sm text-muted-foreground">
+                The filter hides every area. Use it to show them again.
+            </p>
+        {/if}
     {/each}
 
-    <div class="border-t border-border pt-4">
-            <Button
-                variant="ghost"
-                size="sm"
-                class="w-full justify-start gap-2 px-2 text-muted-foreground hover:text-foreground"
-                onclick={() => ask('new-area')}
-            >
-                <Add class="size-4" />
-                New area
-            </Button>
-
+    <Link
+        href={archiveIndex(team)}
+        onclick={() => onNavigate?.()}
+        class="flex min-h-8 items-center gap-2 rounded-md border-t border-border px-2 pt-4 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+    >
+        <Archive class="size-4" />
+        <span class="flex-1">Archive</span>
         {#if archivedCount > 0}
-            <details class="group/archived mt-2">
-                <summary
-                    class="flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-md px-2 text-sm text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none [&::-webkit-details-marker]:hidden"
-                >
-                    <ChevronRight
-                        class="size-4 group-open/archived:rotate-90 motion-safe:transition-transform"
-                    />
-                    Archived
-                    <span class="tabular-nums">({archivedCount})</span>
-                </summary>
-                <ul class="mt-1 flex flex-col gap-0.5">
-                    {#each navigation.archivedAreas as area (`area-${area.id}`)}
-                        <li class="flex min-h-8 items-center gap-2 pl-2">
-                            <span class="min-w-0 flex-1 text-sm wrap-break-word text-muted-foreground"
-                                >{area.name}</span
-                            >
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                class="size-7 text-muted-foreground hover:text-foreground"
-                                aria-label={`Restore ${area.name}`}
-                                onclick={() =>
-                                    visit(unarchiveArea({ current_team: team, area: area.id }))}
-                            >
-                                <Undo class="size-4" />
-                            </Button>
-                        </li>
-                    {/each}
-                    {#each navigation.archivedProjects as project (`project-${project.id}`)}
-                        <li class="flex min-h-8 items-center gap-2 pl-2">
-                            <span class="min-w-0 flex-1 text-sm wrap-break-word text-muted-foreground">
-                                {project.name}
-                                <span class="block text-xs">{project.areaName}</span>
-                            </span>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                class="size-7 text-muted-foreground hover:text-foreground"
-                                aria-label={`Restore ${project.name}`}
-                                onclick={() =>
-                                    visit(
-                                        unarchiveProject({ current_team: team, project: project.id }),
-                                    )}
-                            >
-                                <Undo class="size-4" />
-                            </Button>
-                        </li>
-                    {/each}
-                </ul>
-            </details>
+            <span class={cn(count, 'text-muted-foreground')}>{archivedCount}</span>
         {/if}
-    </div>
+    </Link>
 </nav>
 
 {#key `${dialog.action}-${dialog.area?.id ?? ''}`}
