@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * One Monday-to-Sunday week of planned work for a team, with a goal, a
+ * One week of planned work for a team (seven days from `week_start`), with a goal, a
  * story point target, and the Tasks committed to it.
  *
  * @property int $id
@@ -47,7 +47,7 @@ class Sprint extends Model
     ];
 
     /**
-     * The week always ends on the Sunday after `week_start`. The model sets it,
+     * The week always ends six days after `week_start`. The model sets it,
      * so a form can never save a week of another length.
      */
     protected static function booted(): void

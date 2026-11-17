@@ -13,6 +13,7 @@ use App\Models\Project;
 use App\Models\Sprint;
 use App\Models\SprintCommitment;
 use App\Models\Task;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class SprintController extends Controller
 
         return Inertia::render('sprints/Index', [
             'sprints' => $sprints->map(fn (Sprint $sprint) => $this->summary($sprint)),
-            'freeWeeks' => $this->freeWeeks($sprints),
+            'freeWeeks' => $this->freeWeeks($sprints, $request->user()),
         ]);
     }
 
@@ -218,20 +219,24 @@ class SprintController extends Controller
     }
 
     /**
-     * The next four Mondays, from this week, that have no Sprint yet.
+     * The first days of the next four weeks, from this week, that no Sprint
+     * covers. A week starts on the user's own first day of the week.
      *
      * @param  iterable<Sprint>  $sprints
      * @return array<int, string>
      */
-    private function freeWeeks(iterable $sprints): array
+    private function freeWeeks(iterable $sprints, User $user): array
     {
-        $planned = collect($sprints)->map(fn (Sprint $sprint) => $sprint->week_start->toDateString());
-        $monday = CarbonImmutable::today()->startOfWeek();
+        $planned = collect($sprints);
+        $first = $user->startOfWeek();
 
         return collect(range(0, 7))
-            ->map(fn (int $week) => $monday->addWeeks($week)->toDateString())
-            ->reject(fn (string $date) => $planned->contains($date))
+            ->map(fn (int $week) => $first->addWeeks($week))
+            ->reject(fn (CarbonImmutable $start) => $planned->contains(
+                fn (Sprint $sprint) => $sprint->week_start->lte($start->addDays(6)) && $sprint->week_end->gte($start),
+            ))
             ->take(4)
+            ->map(fn (CarbonImmutable $start) => $start->toDateString())
             ->values()
             ->all();
     }

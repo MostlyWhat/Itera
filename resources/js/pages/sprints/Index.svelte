@@ -105,7 +105,7 @@
     <FormDialog
         bind:open={planning}
         title="Plan a sprint"
-        description="Pick a Monday-to-Sunday week, a goal, and how many points fit. You choose the tasks next."
+        description="Pick a week, a goal, and how many points fit. You choose the tasks next."
         size="lg"
     >
 

@@ -11,7 +11,8 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
 /**
- * Validate a new Sprint: a Monday in the current week or later that the team
+ * Validate a new Sprint: the first day of a week (by the user's week start),
+ * in the current week or later, that the team
  * has not planned yet, plus the goal, the target, and the chosen Tasks.
  */
 class StoreSprintRequest extends FormRequest
@@ -29,22 +30,30 @@ class StoreSprintRequest extends FormRequest
             'week_start' => [
                 'required',
                 'date_format:Y-m-d',
+                // A sprint starts on the first day of the user's week.
                 function (string $attribute, mixed $value, Closure $fail) {
-                    if (! CarbonImmutable::parse($value)->isMonday()) {
-                        $fail(__('A sprint starts on a Monday.'));
+                    $day = CarbonImmutable::parse($value);
+
+                    if ($day->dayOfWeek !== ($this->user()->week_start ?? 1)) {
+                        $fail(__('A sprint starts on a :day. You can change the first day of the week in Settings.', [
+                            'day' => $this->user()->startOfWeek()->englishDayOfWeek,
+                        ]));
                     }
                 },
-                'after_or_equal:'.today()->startOfWeek()->toDateString(),
-                // Compare the date only. SQLite stores the date with a time,
-                // so a plain unique rule would not see the existing week.
+                'after_or_equal:'.$this->user()->startOfWeek()->toDateString(),
+                // No two sprints of a team share a day. Compare dates only:
+                // SQLite stores the date with a time.
                 function (string $attribute, mixed $value, Closure $fail) {
-                    $planned = Sprint::query()
+                    $start = CarbonImmutable::parse($value);
+
+                    $overlaps = Sprint::query()
                         ->where('team_id', $this->team()->id)
-                        ->whereDate('week_start', $value)
+                        ->whereDate('week_start', '<=', $start->addDays(6)->toDateString())
+                        ->whereDate('week_end', '>=', $start->toDateString())
                         ->exists();
 
-                    if ($planned) {
-                        $fail(__('You already have a sprint for this week.'));
+                    if ($overlaps) {
+                        $fail(__('You already have a sprint in this week.'));
                     }
                 },
             ],
