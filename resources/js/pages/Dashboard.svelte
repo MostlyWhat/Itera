@@ -27,13 +27,14 @@
     import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
+    import FormDialog from '@/components/FormDialog.svelte';
     import PendingInvitationsModal from '@/components/PendingInvitationsModal.svelte';
     import PointsMeter from '@/components/sprints/PointsMeter.svelte';
     import { Button, buttonVariants } from '@/components/ui/button';
     import { formatShortDate, formatWeekRange } from '@/lib/dates';
     import { cn } from '@/lib/utils';
     import { update as updateStatus } from '@/routes/tasks/status';
-    import { index as projectsIndex } from '@/routes/projects';
+    import { index as projectsIndex, show as showProject } from '@/routes/projects';
     import { index as sprintsIndex, show as showSprint } from '@/routes/sprints';
     import type { DashboardInvitation } from '@/types';
 
@@ -42,11 +43,13 @@
     type Card = {
         taskId: number;
         title: string;
+        description: string | null;
         points: number | null;
         status: Status;
         dueDate: string | null;
         isOverdue: boolean;
         projectName: string;
+        projectId: number;
         areaName: string;
     };
 
@@ -100,6 +103,15 @@
             ? () => fade(node, { duration: 150 })
             : crossReceive(node, params);
     const flipDuration = () => (prefersReducedMotion.current ? 0 : 200);
+
+    // A click on a card shows the whole task, description included.
+    let detailId = $state<number | null>(null);
+    let detailOpen = $state(false);
+    const detail = $derived(cards.find((card) => card.taskId === detailId) ?? null);
+    const openDetail = (card: Card) => {
+        detailId = card.taskId;
+        detailOpen = true;
+    };
 
     let dragging = $state<number | null>(null);
     let dropTarget = $state<Status | null>(null);
@@ -251,6 +263,8 @@
 
                         <ul class="flex flex-col gap-1.5 p-1.5">
                             {#each items as card (card.taskId)}
+                                <!-- The title button is the keyboard path to the details. -->
+                                <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
                                 <li
                                     in:receive={{ key: card.taskId }}
                                     out:send={{ key: card.taskId }}
@@ -260,23 +274,34 @@
                                         dragging = card.taskId;
                                         event.dataTransfer?.setData('text/plain', String(card.taskId));
                                     }}
+                                    onclick={(event: MouseEvent) => {
+                                        // The arrows and the title button do their own work.
+                                        if (!(event.target as HTMLElement).closest('button')) {
+                                            openDetail(card);
+                                        }
+                                    }}
                                     ondragend={() => {
                                         dragging = null;
                                         dropTarget = null;
                                     }}
                                     class={cn(
-                                        'group/card flex cursor-grab flex-col gap-2 rounded-md border border-border bg-card p-3 shadow-xs transition-[opacity,box-shadow] hover:shadow-sm active:cursor-grabbing',
+                                        'group/card relative flex cursor-grab flex-col gap-2 rounded-md border border-border bg-card p-3 shadow-xs transition-[opacity,box-shadow] has-[button:focus-visible]:ring-3 has-[button:focus-visible]:ring-ring/50 hover:shadow-sm active:cursor-grabbing',
                                         dragging === card.taskId && 'opacity-40',
                                     )}
                                 >
                                     <div class="flex items-start justify-between gap-2">
-                                        <span
+                                        <button
+                                            type="button"
+                                            onclick={() => openDetail(card)}
                                             class={cn(
-                                                'text-sm leading-snug',
+                                                'text-start text-sm leading-snug outline-none',
                                                 card.status === 'done' &&
                                                     'text-muted-foreground line-through decoration-muted-foreground/60',
-                                            )}>{card.title}</span
+                                            )}
                                         >
+                                            {card.title}
+                                            <span class="sr-only">, show details</span>
+                                        </button>
                                         <span
                                             class="shrink-0 rounded-sm border border-border px-1.5 text-xs text-muted-foreground tabular-nums"
                                             >{card.points === null ? '–' : card.points}</span
@@ -304,7 +329,7 @@
                                         </span>
                                         <!-- Keyboard and touch alternative to drag and drop. -->
                                         <span
-                                            class="flex shrink-0 items-center gap-0.5 motion-safe:transition-opacity [@media(hover:hover)]:opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100"
+                                            class="relative z-10 flex shrink-0 items-center gap-0.5 motion-safe:transition-opacity [@media(hover:hover)]:opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100"
                                         >
                                             {#if columnIndex > 0}
                                                 <Button
@@ -420,3 +445,41 @@
         </ol>
     {/if}
 </div>
+
+<FormDialog bind:open={detailOpen} title={detail?.title ?? 'Task'} size="lg">
+    {#if detail}
+        <dl class="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm">
+            <dt class="text-muted-foreground">Status</dt>
+            <dd>{labelOf(detail.status)}</dd>
+            <dt class="text-muted-foreground">Project</dt>
+            <dd class="wrap-break-word">{detail.projectName} · {detail.areaName}</dd>
+            <dt class="text-muted-foreground">Story points</dt>
+            <dd class="tabular-nums">{detail.points ?? 'None'}</dd>
+            <dt class="text-muted-foreground">Deadline</dt>
+            <dd class={cn('tabular-nums', detail.isOverdue && 'font-medium text-destructive')}>
+                {#if detail.dueDate}
+                    {formatShortDate(detail.dueDate)}{detail.isOverdue ? ', overdue' : ''}
+                {:else}
+                    None
+                {/if}
+            </dd>
+        </dl>
+        <div class="flex flex-col gap-2">
+            <h3 class="text-sm font-medium">Description</h3>
+            {#if detail.description}
+                <p class="max-h-72 overflow-y-auto text-sm whitespace-pre-line wrap-break-word text-muted-foreground">{detail.description}</p>
+            {:else}
+                <p class="text-sm text-muted-foreground">No description.</p>
+            {/if}
+        </div>
+        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onclick={() => (detailOpen = false)}>Close</Button>
+            <Link
+                href={showProject({ current_team: team, project: detail.projectId })}
+                class={buttonVariants({ variant: 'outline' })}
+            >
+                Open the project
+            </Link>
+        </div>
+    {/if}
+</FormDialog>
