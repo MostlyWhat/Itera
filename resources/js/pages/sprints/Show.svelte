@@ -26,9 +26,11 @@
 <script lang="ts">
     import { Form, page, router } from '@inertiajs/svelte';
     import Add from 'carbon-icons-svelte/lib/Add.svelte';
+    import CheckmarkFilled from 'carbon-icons-svelte/lib/CheckmarkFilled.svelte';
     import Close from 'carbon-icons-svelte/lib/Close.svelte';
     import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
     import Search from 'carbon-icons-svelte/lib/Search.svelte';
+    import Undo from 'carbon-icons-svelte/lib/Undo.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
     import FormDialog from '@/components/FormDialog.svelte';
@@ -48,6 +50,7 @@
     import { cn } from '@/lib/utils';
     import { update } from '@/routes/sprints';
     import { store as storeSprintTask } from '@/routes/sprints/tasks';
+    import { update as updateStatus } from '@/routes/tasks/status';
 
     type Candidate = {
         id: number;
@@ -164,6 +167,20 @@
     const timingLabel = $derived(
         { current: 'This week', upcoming: 'Upcoming', past: 'Ended' }[sprint.timing],
     );
+    const statusLabels: Record<string, string> = {
+        todo: 'To Do',
+        in_progress: 'In Progress',
+        done: 'Done',
+    };
+
+    // A done task is locked in the sprint. The only action brings it back.
+    const reopen = (taskId: number) =>
+        router.patch(
+            updateStatus({ current_team: team, task: taskId }).url,
+            { status: 'todo' },
+            { preserveScroll: true },
+        );
+
     const pointsLabel = (points: number | null) =>
         points === null ? '– pts' : `${points} pts`;
 </script>
@@ -237,21 +254,50 @@
                 {:else}
                     <ul class="overflow-hidden rounded-lg border border-border bg-card">
                         {#each commitments as commitment (commitment.id)}
+                            {@const done = commitment.status === 'done'}
                             <li
                                 class="flex min-h-12 items-center gap-3 border-t border-border py-2 pr-2 pl-4 first:border-t-0"
                             >
                                 <span class="flex min-w-0 flex-1 flex-col">
-                                    <span class="wrap-break-word text-sm">{commitment.title}</span>
-                                    {#if commitment.projectName}
-                                        <span class="wrap-break-word text-xs text-muted-foreground"
-                                            >{commitment.projectName}</span
-                                        >
-                                    {/if}
+                                    <span
+                                        class={cn(
+                                            'text-sm wrap-break-word',
+                                            done && 'text-muted-foreground line-through decoration-muted-foreground/60',
+                                        )}>{commitment.title}</span
+                                    >
+                                    <span class="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                                        {#if commitment.projectName}
+                                            <span class="wrap-break-word">{commitment.projectName}</span>
+                                        {/if}
+                                        {#if commitment.status}
+                                            <span
+                                                class={cn(
+                                                    'flex items-center gap-1 font-medium',
+                                                    commitment.status === 'in_progress' && 'text-accent-foreground',
+                                                    done && 'text-primary',
+                                                )}
+                                            >
+                                                {#if done}<CheckmarkFilled class="size-3.5" />{/if}
+                                                {statusLabels[commitment.status]}
+                                            </span>
+                                        {/if}
+                                    </span>
                                 </span>
                                 <span class="shrink-0 text-xs text-muted-foreground tabular-nums"
                                     >{pointsLabel(commitment.points)}</span
                                 >
-                                {#if commitment.taskId !== null}
+                                {#if commitment.taskId !== null && done}
+                                    {@const taskId = commitment.taskId}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        class="h-8 shrink-0 gap-1.5 text-muted-foreground hover:text-foreground"
+                                        onclick={() => reopen(taskId)}
+                                    >
+                                        <Undo class="size-4" />
+                                        Move to To Do
+                                    </Button>
+                                {:else if commitment.taskId !== null}
                                     {@const taskId = commitment.taskId}
                                     <Button
                                         variant="ghost"
@@ -273,7 +319,7 @@
 
             <!-- The backlog: open tasks to pull into the sprint. -->
             <section aria-labelledby="backlog-title" class="flex min-w-0 flex-col gap-3">
-                <h2 id="backlog-title" class="flex min-h-8 items-center type-section">
+                <h2 id="backlog-title" class="flex min-h-8 items-center gap-1 type-section">
                     Backlog
                     <span class="font-normal text-muted-foreground tabular-nums"
                         >({backlog.length})</span
@@ -321,7 +367,7 @@
                                     >
                                         <span class="wrap-break-word">{task.projectName}</span>
                                         {#if taken && task.takenBy}
-                                            <span>· In the sprint of {formatShortDate(task.takenBy)}</span>
+                                            <span><span aria-hidden="true">·</span> In the sprint of {formatShortDate(task.takenBy)}</span>
                                         {:else if task.dueDate}
                                             <span
                                                 class={cn(
@@ -329,7 +375,7 @@
                                                     task.isOverdue && 'font-medium text-destructive',
                                                 )}
                                             >
-                                                ·
+                                                <span aria-hidden="true">·</span>
                                                 {#if task.isOverdue}
                                                     <WarningAltFilled class="size-3.5" />
                                                     Overdue,

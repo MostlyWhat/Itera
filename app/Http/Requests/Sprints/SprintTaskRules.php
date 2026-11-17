@@ -28,8 +28,9 @@ trait SprintTaskRules
     }
 
     /**
-     * Check that each chosen Task belongs to the team, is not done, and is not
-     * in another current or upcoming Sprint.
+     * Check that each chosen Task belongs to the team, and is not in another
+     * current or upcoming Sprint. A Task that is new to the Sprint must not be
+     * done. A done Task that is already in the Sprint can stay.
      */
     protected function checkTasks(Validator $validator, Team $team, ?Sprint $sprint): void
     {
@@ -51,7 +52,9 @@ trait SprintTaskRules
             return;
         }
 
-        if ($teamTasks->contains(fn (Task $task) => $task->status === TaskStatus::Done)) {
+        $alreadyIn = $sprint?->commitments()->pluck('task_id')->all() ?? [];
+
+        if ($teamTasks->contains(fn (Task $task) => $task->status === TaskStatus::Done && ! in_array($task->id, $alreadyIn, true))) {
             $validator->errors()->add('task_ids', __('Done tasks cannot go into a sprint.'));
 
             return;
