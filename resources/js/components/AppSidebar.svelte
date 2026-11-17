@@ -4,6 +4,7 @@
     import LogoGithub from 'carbon-icons-svelte/lib/LogoGithub.svelte';
     import Folders from 'carbon-icons-svelte/lib/Folders.svelte';
     import Calendar from 'carbon-icons-svelte/lib/Calendar.svelte';
+    import Help from 'carbon-icons-svelte/lib/Help.svelte';
     import Grid from 'carbon-icons-svelte/lib/Grid.svelte';
     import ListChecked from 'carbon-icons-svelte/lib/ListChecked.svelte';
     import type { Snippet } from 'svelte';
@@ -21,7 +22,7 @@
         SidebarMenuButton,
         SidebarMenuItem,
     } from '@/components/ui/sidebar';
-    import { dashboard } from '@/routes';
+    import { dashboard, guide } from '@/routes';
     import { index as projectsIndex } from '@/routes/projects';
     import { index as sprintsIndex } from '@/routes/sprints';
     import type { NavItem, Team } from '@/types';
@@ -54,6 +55,11 @@
                       title: 'Sprints',
                       href: sprintsIndex(currentTeam.slug),
                       icon: Calendar,
+                  },
+                  {
+                      title: 'Guide',
+                      href: guide(currentTeam.slug),
+                      icon: Help,
                   },
               ]
             : []),

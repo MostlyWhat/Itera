@@ -4,6 +4,7 @@
     import LogoGithub from 'carbon-icons-svelte/lib/LogoGithub.svelte';
     import Folders from 'carbon-icons-svelte/lib/Folders.svelte';
     import Calendar from 'carbon-icons-svelte/lib/Calendar.svelte';
+    import Help from 'carbon-icons-svelte/lib/Help.svelte';
     import Grid from 'carbon-icons-svelte/lib/Grid.svelte';
     import ListChecked from 'carbon-icons-svelte/lib/ListChecked.svelte';
     import Menu from 'carbon-icons-svelte/lib/Menu.svelte';
@@ -45,7 +46,7 @@
     import { currentUrlState } from '@/lib/currentUrl.svelte';
     import { getInitials } from '@/lib/initials';
     import { toUrl } from '@/lib/utils';
-    import { dashboard } from '@/routes';
+    import { dashboard, guide } from '@/routes';
     import { index as projectsIndex } from '@/routes/projects';
     import { index as sprintsIndex } from '@/routes/sprints';
     import type { BreadcrumbItem, NavItem, Team } from '@/types';
@@ -84,6 +85,11 @@
                       title: 'Sprints',
                       href: sprintsIndex(currentTeam.slug),
                       icon: Calendar,
+                  },
+                  {
+                      title: 'Guide',
+                      href: guide(currentTeam.slug),
+                      icon: Help,
                   },
               ]
             : []),
