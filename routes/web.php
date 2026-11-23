@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Areas\ArchiveController;
 use App\Http\Controllers\Areas\AreaController;
+use App\Http\Controllers\Areas\PriorityController;
+use App\Http\Controllers\Areas\PriorityOrderController;
 use App\Http\Controllers\Areas\ProjectController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Sprints\SprintController;
@@ -25,6 +27,11 @@ Route::prefix('{current_team}')
         Route::patch('areas/{area}', [AreaController::class, 'update'])->name('areas.update');
         Route::post('areas/{area}/archive', [AreaController::class, 'archive'])->name('areas.archive');
         Route::delete('areas/{area}/archive', [AreaController::class, 'unarchive'])->name('areas.unarchive');
+
+        // Priority order of Areas and Projects (ITERA-07)
+        Route::get('priority', PriorityController::class)->name('priority');
+        Route::put('areas/order', [PriorityOrderController::class, 'areas'])->name('areas.order');
+        Route::put('areas/{area}/projects/order', [PriorityOrderController::class, 'projects'])->name('projects.order');
 
         Route::post('areas/{area}/projects', [ProjectController::class, 'store'])->name('projects.store');
         Route::patch('projects/{project}', [ProjectController::class, 'update'])->name('projects.update');

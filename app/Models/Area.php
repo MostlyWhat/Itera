@@ -59,6 +59,6 @@ class Area extends Model
      */
     public function projects(): HasMany
     {
-        return $this->hasMany(Project::class)->orderBy('position');
+        return $this->hasMany(Project::class)->orderBy('position')->orderBy('id');
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Priority\StackOrder;
+use App\Priority\TaskOrder;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -18,7 +20,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // The way Tasks are put in order (FR-5). ITERA-08 makes it a user setting.
+        $this->app->bind(TaskOrder::class, StackOrder::class);
     }
 
     /**

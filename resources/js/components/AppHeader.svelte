@@ -3,6 +3,7 @@
     import Book from 'carbon-icons-svelte/lib/Book.svelte';
     import LogoGithub from 'carbon-icons-svelte/lib/LogoGithub.svelte';
     import Folders from 'carbon-icons-svelte/lib/Folders.svelte';
+    import ListNumbered from 'carbon-icons-svelte/lib/ListNumbered.svelte';
     import Calendar from 'carbon-icons-svelte/lib/Calendar.svelte';
     import Help from 'carbon-icons-svelte/lib/Help.svelte';
     import Grid from 'carbon-icons-svelte/lib/Grid.svelte';
@@ -46,7 +47,7 @@
     import { currentUrlState } from '@/lib/currentUrl.svelte';
     import { getInitials } from '@/lib/initials';
     import { toUrl } from '@/lib/utils';
-    import { dashboard, guide } from '@/routes';
+    import { dashboard, guide, priority } from '@/routes';
     import { index as projectsIndex } from '@/routes/projects';
     import { index as sprintsIndex } from '@/routes/sprints';
     import type { BreadcrumbItem, NavItem, Team } from '@/types';
@@ -80,6 +81,11 @@
                       title: 'Projects',
                       href: projectsIndex(currentTeam.slug),
                       icon: ListChecked,
+                  },
+                  {
+                      title: 'Priority',
+                      href: priority(currentTeam.slug),
+                      icon: ListNumbered,
                   },
                   {
                       title: 'Sprints',

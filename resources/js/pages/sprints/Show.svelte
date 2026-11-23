@@ -24,7 +24,7 @@
 </script>
 
 <script lang="ts">
-    import { Form, page, router } from '@inertiajs/svelte';
+    import { Form, Link, page, router } from '@inertiajs/svelte';
     import Add from 'carbon-icons-svelte/lib/Add.svelte';
     import CheckmarkFilled from 'carbon-icons-svelte/lib/CheckmarkFilled.svelte';
     import Close from 'carbon-icons-svelte/lib/Close.svelte';
@@ -50,6 +50,7 @@
     } from '@/components/ui/select';
     import { formatWeekRange, weekName } from '@/lib/dates';
     import { cn } from '@/lib/utils';
+    import { priority } from '@/routes';
     import { update } from '@/routes/sprints';
     import { store as storeSprintTask } from '@/routes/sprints/tasks';
     import { update as updateStatus } from '@/routes/tasks/status';
@@ -368,6 +369,10 @@
                         >({backlog.length})</span
                     >
                 </h2>
+                <p class="-mt-2 text-xs text-muted-foreground">
+                    In the order of your
+                    <Link href={priority(team)} class="font-medium text-foreground underline-offset-4 hover:underline">priority stack</Link>.
+                </p>
 
                 <div class="relative">
                     <Search
