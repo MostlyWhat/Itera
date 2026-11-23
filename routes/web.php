@@ -5,6 +5,7 @@ use App\Http\Controllers\Areas\AreaController;
 use App\Http\Controllers\Areas\PriorityController;
 use App\Http\Controllers\Areas\PriorityOrderController;
 use App\Http\Controllers\Areas\ProjectController;
+use App\Http\Controllers\Areas\SortingModeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Sprints\SprintController;
 use App\Http\Controllers\Tasks\SubtaskController;
@@ -30,6 +31,8 @@ Route::prefix('{current_team}')
 
         // Priority order of Areas and Projects (ITERA-07)
         Route::get('priority', PriorityController::class)->name('priority');
+        // Sorting modes (ITERA-08)
+        Route::put('priority/mode', SortingModeController::class)->name('priority.mode');
         Route::put('areas/order', [PriorityOrderController::class, 'areas'])->name('areas.order');
         Route::put('areas/{area}/projects/order', [PriorityOrderController::class, 'projects'])->name('projects.order');
 

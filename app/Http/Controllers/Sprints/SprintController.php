@@ -69,7 +69,7 @@ class SprintController extends Controller
     /**
      * Show the plan of one Sprint, with the Tasks it can still take.
      */
-    public function show(Sprint $sprint): Response
+    public function show(Request $request, Sprint $sprint): Response
     {
         Gate::authorize('view', $sprint);
 
@@ -92,6 +92,7 @@ class SprintController extends Controller
             'candidates' => $sprint->isEditable() ? $this->candidates($sprint) : [],
             'projects' => $sprint->isEditable() ? $this->projects($sprint) : [],
             'storyPointOptions' => StoryPoints::values(),
+            'sortingLabel' => $request->user()->sorting_mode->label(),
         ]);
     }
 

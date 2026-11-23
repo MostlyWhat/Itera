@@ -154,7 +154,8 @@ test('the priority page lists the stack and the open tasks in stack order', func
             ->component('priority/Index')
             ->where('areas.0.name', 'Job')
             ->where('areas.1.projects.0.name', 'Midterm')
-            ->where('taskCount', 5)
+            ->has('tasks', 5)
+            ->where('sortingMode', 'stack')
             ->where('nextSprint', null));
 });
 
