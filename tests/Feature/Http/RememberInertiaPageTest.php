@@ -74,3 +74,34 @@ test('a full page load still sets the page to go back to', function () {
         ->put(route('priority.mode', $slug), ['sorting_mode' => 'deadline'])
         ->assertRedirect(route('dashboard', $slug));
 });
+
+test('an action with an origin-only referer goes back to the last inertia page', function () {
+    $user = User::factory()->create();
+    $slug = $user->currentTeam->slug;
+
+    $this->actingAs($user)
+        ->withHeaders(inertiaHeaders())
+        ->get(route('priority', $slug))
+        ->assertOk();
+
+    // Safari can send only the origin as the Referer.
+    $this->actingAs($user)
+        ->withHeaders(['X-Inertia' => '', 'X-Requested-With' => '', 'X-Inertia-Version' => '', 'Referer' => url('/')])
+        ->put(route('priority.mode', $slug), ['sorting_mode' => 'deadline'])
+        ->assertRedirect(route('priority', $slug));
+});
+
+test('a full referer still wins over the saved page', function () {
+    $user = User::factory()->create();
+    $slug = $user->currentTeam->slug;
+
+    $this->actingAs($user)
+        ->withHeaders(inertiaHeaders())
+        ->get(route('priority', $slug))
+        ->assertOk();
+
+    $this->actingAs($user)
+        ->withHeaders(['X-Inertia' => '', 'X-Requested-With' => '', 'X-Inertia-Version' => '', 'Referer' => route('sprints.index', $slug)])
+        ->put(route('priority.mode', $slug), ['sorting_mode' => 'deadline'])
+        ->assertRedirect(route('sprints.index', $slug));
+});
