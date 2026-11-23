@@ -54,6 +54,12 @@
     );
 
     const label = 'text-sm font-medium';
+
+    // A new Task can repeat each week on one weekday (ITERA-09). Then the
+    // weekday is its deadline, so the deadline field hides.
+    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    let repeat = $state('');
+    const repeatLabel = $derived(repeat === '' ? 'Does not repeat' : `Every ${weekdays[Number(repeat)]}`);
 </script>
 
 <Form
@@ -128,6 +134,23 @@
         </fieldset>
 
         <div class="grid gap-5 sm:grid-cols-2">
+            {#if !isEdit}
+                <div class="flex flex-col gap-2">
+                    <label for={`${id}-repeat`} class={label}>Repeat</label>
+                    <Select type="single" name="repeat_weekday" bind:value={repeat}>
+                        <SelectTrigger id={`${id}-repeat`} class="w-full">{repeatLabel}</SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="" label="Does not repeat" />
+                            {#each weekdays as day, index (day)}
+                                <SelectItem value={String(index)} label={`Every ${day}`} />
+                            {/each}
+                        </SelectContent>
+                    </Select>
+                    <InputError message={errors.repeat_weekday} />
+                </div>
+            {/if}
+
+            {#if repeat === ''}
             <div class="flex flex-col gap-2">
                 <label for={`${id}-due`} class={label}>
                     Deadline <span class="font-normal text-muted-foreground">(optional)</span>
@@ -143,6 +166,11 @@
                 />
                 <InputError message={errors.due_date} />
             </div>
+            {:else}
+                <p class="self-end text-xs text-pretty text-muted-foreground sm:pb-2">
+                    Itera adds this task every {weekdays[Number(repeat)]}, with that day as the deadline. Each week has its own status.
+                </p>
+            {/if}
 
             {#if isEdit && statusOptions.length > 0}
                 <div class="flex flex-col gap-2">

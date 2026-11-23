@@ -31,6 +31,7 @@
     import Checkmark from 'carbon-icons-svelte/lib/Checkmark.svelte';
     import ChevronRight from 'carbon-icons-svelte/lib/ChevronRight.svelte';
     import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
+    import Repeat from 'carbon-icons-svelte/lib/Repeat.svelte';
     import ListChecked from 'carbon-icons-svelte/lib/ListChecked.svelte';
     import OverflowMenuVertical from 'carbon-icons-svelte/lib/OverflowMenuVertical.svelte';
     import TrashCan from 'carbon-icons-svelte/lib/TrashCan.svelte';
@@ -76,6 +77,7 @@
         store as storeTask,
         update as updateTask,
     } from '@/routes/tasks';
+    import { destroy as stopWeekly } from '@/routes/weekly';
     import { update as updateStatus } from '@/routes/tasks/status';
 
     type TaskItem = {
@@ -87,6 +89,7 @@
         storyPoints: number | null;
         dueDate: string | null;
         isOverdue: boolean;
+        isWeekly: boolean;
         progress: Progress | null;
         subtasks: SubtaskItem[];
     };
@@ -97,6 +100,7 @@
         tasks,
         storyPointOptions,
         statusOptions,
+        weekly,
     }: {
         navigation: ProjectNavigation;
         project: {
@@ -109,6 +113,7 @@
         tasks: TaskItem[];
         storyPointOptions: number[];
         statusOptions: { value: string; label: string }[];
+        weekly: { id: number; title: string; weekday: number; weekdayName: string; storyPoints: number | null }[];
     } = $props();
 
     const team = $derived((page.props.currentTeam as Team).slug);
@@ -227,6 +232,12 @@
                             {task.title}
                             <span class="sr-only">, show details</span>
                         </button>
+                        {#if task.isWeekly}
+                            <span class="flex w-fit shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                                <Repeat class="size-3.5" aria-hidden="true" />
+                                Weekly
+                            </span>
+                        {/if}
                         {#if task.status === 'in_progress'}
                             <span
                                 class="w-fit shrink-0 rounded-sm bg-accent px-1.5 py-0.5 text-xs font-medium text-accent-foreground"
@@ -438,6 +449,37 @@
             </p>
         {/if}
     </section>
+
+    {#if weekly.length > 0}
+        <section aria-labelledby="weekly-title" class="mt-6 flex flex-col gap-2">
+            <h2 id="weekly-title" class="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                <Repeat class="size-4" aria-hidden="true" />
+                Repeats every week
+            </h2>
+            <ul class="overflow-hidden rounded-lg border border-border bg-card">
+                {#each weekly as item (item.id)}
+                    <li class="flex min-h-11 items-center gap-3 border-t border-border py-1.5 pr-2 pl-4 first:border-t-0">
+                        <span class="min-w-0 flex-1 text-sm wrap-break-word">{item.title}</span>
+                        <span class="shrink-0 text-xs text-muted-foreground">Every {item.weekdayName}</span>
+                        {#if !project.archived}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                class="h-8 shrink-0 text-muted-foreground hover:text-foreground"
+                                aria-label={`Stop repeating ${item.title}`}
+                                onclick={() =>
+                                    router.delete(stopWeekly({ current_team: team, recurrenceTemplate: item.id }).url, {
+                                        preserveScroll: true,
+                                    })}
+                            >
+                                Stop repeating
+                            </Button>
+                        {/if}
+                    </li>
+                {/each}
+            </ul>
+        </section>
+    {/if}
 
     {#if doneTasks.length > 0}
         <details class="group mt-6">
