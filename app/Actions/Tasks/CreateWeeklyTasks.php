@@ -16,7 +16,8 @@ use Illuminate\Database\UniqueConstraintViolationException;
  * The action is safe to run again and again (NFR-4). It skips dates that
  * already have a Task, and the unique index on (template, date) stops a
  * second Task when two requests run at the same time. Dates before the
- * template was made, and weeks that the user missed, get no Task.
+ * template was made, weeks that the user missed, and Tasks that the user
+ * deleted, get no Task.
  */
 class CreateWeeklyTasks
 {
@@ -47,6 +48,14 @@ class CreateWeeklyTasks
         $start = $template->created_at !== null && $template->created_at->startOfDay()->gt($today)
             ? $template->created_at->startOfDay()
             : $today;
+
+        // Only dates after the latest Task get a new one, so a Task that the
+        // user deleted does not come back.
+        $latest = $template->tasks()->max('recurrence_date');
+
+        if ($latest !== null && CarbonImmutable::parse($latest)->gte($start)) {
+            $start = CarbonImmutable::parse($latest)->addDay();
+        }
 
         $made = 0;
 
