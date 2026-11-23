@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * @property int $id
  * @property int $project_id
+ * @property int|null $recurrence_template_id
+ * @property CarbonImmutable|null $recurrence_date
  * @property string $title
  * @property TaskStatus $status
  * @property StoryPoints|null $story_points
@@ -28,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Project $project
+ * @property-read RecurrenceTemplate|null $recurrenceTemplate
  * @property-read Collection<int, SprintCommitment> $commitments
  * @property-read Collection<int, Subtask> $subtasks
  * @property-read int|null $subtasks_count
@@ -71,6 +74,16 @@ class Task extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * Get the weekly task that made this Task, if any (ITERA-09).
+     *
+     * @return BelongsTo<RecurrenceTemplate, $this>
+     */
+    public function recurrenceTemplate(): BelongsTo
+    {
+        return $this->belongsTo(RecurrenceTemplate::class);
     }
 
     /**
@@ -196,6 +209,7 @@ class Task extends Model
             'story_points' => StoryPoints::class,
             'due_date' => 'date',
             'completed_at' => 'datetime',
+            'recurrence_date' => 'date',
         ];
     }
 }

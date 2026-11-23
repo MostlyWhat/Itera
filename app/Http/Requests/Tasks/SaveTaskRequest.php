@@ -28,6 +28,8 @@ class SaveTaskRequest extends FormRequest
             'story_points' => ['nullable', 'integer', Rule::enum(StoryPoints::class)],
             'due_date' => ['nullable', 'date_format:Y-m-d'],
             'status' => ['sometimes', 'required', Rule::enum(TaskStatus::class)],
+            // A Task can repeat each week on one weekday (ITERA-09).
+            'repeat_weekday' => ['nullable', 'integer', 'between:0,6'],
         ];
     }
 
@@ -41,6 +43,7 @@ class SaveTaskRequest extends FormRequest
         return [
             'story_points.enum' => __('Choose 1, 2, 3, 5, 8, 13, or 21 story points.'),
             'due_date.date_format' => __('Enter the deadline as a date.'),
+            'repeat_weekday.between' => __('Choose a day from Sunday to Saturday.'),
         ];
     }
 
@@ -53,6 +56,7 @@ class SaveTaskRequest extends FormRequest
             'title' => trim((string) $this->input('title')),
             'story_points' => $this->filled('story_points') ? $this->input('story_points') : null,
             'due_date' => $this->filled('due_date') ? $this->input('due_date') : null,
+            'repeat_weekday' => $this->filled('repeat_weekday') ? $this->input('repeat_weekday') : null,
         ]);
 
         if ($this->has('description')) {

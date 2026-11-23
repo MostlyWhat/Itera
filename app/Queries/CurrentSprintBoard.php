@@ -49,6 +49,7 @@ class CurrentSprintBoard
                     'status' => $task->status->value,
                     'dueDate' => $task->due_date?->toDateString(),
                     'isOverdue' => $task->isOverdue(),
+                    'isWeekly' => $task->recurrence_template_id !== null,
                     'projectId' => $task->project->id,
                     'projectName' => $task->project->name,
                     'areaName' => $task->project->area->name,

@@ -8,17 +8,19 @@ use App\Http\Controllers\Areas\ProjectController;
 use App\Http\Controllers\Areas\SortingModeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Sprints\SprintController;
+use App\Http\Controllers\Tasks\RecurrenceTemplateController;
 use App\Http\Controllers\Tasks\SubtaskController;
 use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\Tasks\TaskStatusController;
 use App\Http\Controllers\Teams\TeamInvitationController;
+use App\Http\Middleware\CreateDueWeeklyTasks;
 use App\Http\Middleware\EnsureTeamMembership;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
 
 Route::prefix('{current_team}')
-    ->middleware(['auth', 'verified', EnsureTeamMembership::class])
+    ->middleware(['auth', 'verified', EnsureTeamMembership::class, CreateDueWeeklyTasks::class])
     ->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
 
@@ -61,6 +63,9 @@ Route::prefix('{current_team}')
 
         // Kanban board on the dashboard (ITERA-05)
         Route::patch('tasks/{task}/status', TaskStatusController::class)->name('tasks.status.update');
+
+        // Weekly tasks (ITERA-09)
+        Route::delete('weekly/{recurrenceTemplate}', [RecurrenceTemplateController::class, 'destroy'])->name('weekly.destroy');
 
         // Subtasks (ITERA-06)
         Route::post('tasks/{task}/subtasks', [SubtaskController::class, 'store'])->name('subtasks.store');

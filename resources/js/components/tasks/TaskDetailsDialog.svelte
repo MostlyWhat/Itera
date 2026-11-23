@@ -10,6 +10,7 @@
         points: number | null;
         dueDate: string | null;
         isOverdue: boolean;
+        repeatsOn: string | null;
         projectId: number;
         projectName: string;
         areaName: string;
@@ -20,8 +21,10 @@
 
 <script lang="ts">
     import { Link } from '@inertiajs/svelte';
+    import Repeat from 'carbon-icons-svelte/lib/Repeat.svelte';
     import FormDialog from '@/components/FormDialog.svelte';
     import SubtaskList from '@/components/tasks/SubtaskList.svelte';
+    import { Badge } from '@/components/ui/badge';
     import { Button, buttonVariants } from '@/components/ui/button';
     import { formatShortDate } from '@/lib/dates';
     import { cn } from '@/lib/utils';
@@ -43,6 +46,12 @@
 
 <FormDialog bind:open title={task?.title ?? 'Task'} size="lg">
     {#if task}
+        {#if task.repeatsOn}
+            <Badge variant="secondary" class="-mt-2">
+                <Repeat aria-hidden="true" />
+                Weekly · {task.repeatsOn}
+            </Badge>
+        {/if}
         <dl class="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm">
             <dt class="text-muted-foreground">Status</dt>
             <dd>{task.statusLabel}</dd>

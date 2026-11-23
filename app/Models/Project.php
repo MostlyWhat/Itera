@@ -62,4 +62,14 @@ class Project extends Model
     {
         return $this->hasMany(Task::class);
     }
+
+    /**
+     * Get the weekly tasks of the Project (ITERA-09).
+     *
+     * @return HasMany<RecurrenceTemplate, $this>
+     */
+    public function recurrenceTemplates(): HasMany
+    {
+        return $this->hasMany(RecurrenceTemplate::class)->orderBy('weekday')->orderBy('id');
+    }
 }

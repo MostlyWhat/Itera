@@ -27,6 +27,7 @@
     import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
+    import Repeat from 'carbon-icons-svelte/lib/Repeat.svelte';
     import FormDialog from '@/components/FormDialog.svelte';
     import SubtaskList from '@/components/tasks/SubtaskList.svelte';
     import type { SubtaskItem } from '@/components/tasks/SubtaskList.svelte';
@@ -55,6 +56,7 @@
         projectName: string;
         projectId: number;
         areaName: string;
+        isWeekly: boolean;
         progress: Progress | null;
         subtasks: SubtaskItem[];
     };
@@ -316,6 +318,9 @@
                                     <div class="flex items-center justify-between gap-2">
                                         <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                                             <span class="wrap-break-word">{card.projectName}</span>
+                                            {#if card.isWeekly}
+                                                <Repeat class="size-3.5 shrink-0" aria-label="Weekly task" />
+                                            {/if}
                                             {#if card.progress}
                                                 <SubtaskProgress progress={card.progress} />
                                             {/if}
