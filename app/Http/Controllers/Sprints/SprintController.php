@@ -15,6 +15,7 @@ use App\Models\SprintCommitment;
 use App\Models\Subtask;
 use App\Models\Task;
 use App\Models\User;
+use App\Priority\TaskOrder;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,8 @@ use Inertia\Response;
  */
 class SprintController extends Controller
 {
+    public function __construct(private readonly TaskOrder $order) {}
+
     /**
      * List the Sprints of the current team, and the weeks that are free to plan.
      */
@@ -205,12 +208,13 @@ class SprintController extends Controller
             ->get()
             ->keyBy('task_id');
 
-        return Task::query()
-            ->where('status', '!=', TaskStatus::Done->value)
+        // The backlog follows the priority stack, so the tasks to pick first
+        // are at the top.
+        return $this->order->apply(Task::query()
+            ->where('tasks.status', '!=', TaskStatus::Done->value)
             ->whereHas('project', fn ($projects) => $projects->active()
-                ->whereHas('area', fn ($areas) => $areas->active()->where('team_id', $sprint->team_id)))
+                ->whereHas('area', fn ($areas) => $areas->active()->where('team_id', $sprint->team_id))))
             ->with(['project.area', 'subtasks'])
-            ->inListOrder()
             ->get()
             ->map(fn (Task $task) => [
                 'id' => $task->id,

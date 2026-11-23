@@ -8,6 +8,7 @@ use App\Models\SprintCommitment;
 use App\Models\Subtask;
 use App\Models\Task;
 use App\Models\Team;
+use App\Priority\TaskOrder;
 
 /**
  * The Kanban board of the team's Sprint for this week: the Sprint summary
@@ -16,6 +17,8 @@ use App\Models\Team;
  */
 class CurrentSprintBoard
 {
+    public function __construct(private readonly TaskOrder $order) {}
+
     /**
      * @return array{sprint: array<string, mixed>, cards: array<int, array<string, mixed>>, columns: list<array{status: string, label: string}>}|null
      */
@@ -33,9 +36,11 @@ class CurrentSprintBoard
 
         return [
             'sprint' => $this->summary($sprint),
-            'cards' => $sprint->commitments
+            // Each column follows the priority stack.
+            'cards' => $this->order->sort($sprint->commitments
                 ->map(fn (SprintCommitment $commitment) => $commitment->task)
                 ->filter()
+                ->values())
                 ->map(fn (Task $task) => [
                     'taskId' => $task->id,
                     'title' => $task->title,
