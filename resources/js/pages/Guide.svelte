@@ -258,7 +258,8 @@
         <li>Use the plus button next to an area to add a project to it.</li>
         <li>
             Open <Link href={priority(team)} class={link}>Priority</Link> to rank your areas and projects.
-            The sprint backlog and the board show tasks in that order.
+            The sprint backlog and the board show tasks in that order. To sort by deadline instead,
+            or by a balance of urgent tasks and your stack, change the sort on the same page.
         </li>
         <li>Use the menu next to an area to rename or archive it.</li>
         <li>Edit or archive a project from the menu on the project page.</li>

@@ -8,8 +8,9 @@
 </script>
 
 <script lang="ts">
-    import { Link, page } from '@inertiajs/svelte';
+    import { Link, page, router } from '@inertiajs/svelte';
     import ArrowRight from 'carbon-icons-svelte/lib/ArrowRight.svelte';
+    import Time from 'carbon-icons-svelte/lib/Time.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import { flip } from 'svelte/animate';
     import { quintOut } from 'svelte/easing';
@@ -19,12 +20,14 @@
     import { buttonVariants } from '@/components/ui/button';
     import { formatShortDate } from '@/lib/dates';
     import { cn } from '@/lib/utils';
+    import { mode as saveMode } from '@/routes/priority';
     import { index as projectsIndex, show as showProject } from '@/routes/projects';
     import { index as sprintsIndex, show as showSprint } from '@/routes/sprints';
 
-    // The priority stack (ITERA-07). The user ranks Areas and Projects on the
-    // left, sees on the right which open Tasks that puts first, and goes on
-    // to fill the next sprint. The task list keeps the stack's groups, so a
+    // The priority stack (ITERA-07) and the sorting mode (ITERA-08). The
+    // user ranks Areas and Projects on the left, picks how Tasks are sorted,
+    // sees on the right which open Tasks come first, and goes on to fill the
+    // next sprint. In Stack order the list keeps the stack's groups, so a
     // move in the stack shows its effect at once.
     type StackTask = {
         id: number;
@@ -33,6 +36,7 @@
         points: number | null;
         dueDate: string | null;
         isOverdue: boolean;
+        isDueSoon: boolean;
         projectId: number;
         projectName: string;
         areaName: string;
@@ -42,14 +46,29 @@
     let {
         areas,
         tasks,
-        taskCount,
         nextSprint,
+        sortingMode,
+        sortingModes,
     }: {
         areas: { id: number; name: string; projects: { id: number; name: string }[] }[];
         tasks: StackTask[];
-        taskCount: number;
         nextSprint: { id: number; weekStart: string; current: boolean } | null;
+        sortingMode: string;
+        sortingModes: { value: string; label: string; description: string }[];
     } = $props();
+
+    // The mode on screen changes at once. The server saves it and sends the
+    // Tasks in the new order.
+    let mode = $derived(sortingMode);
+    const current = $derived(sortingModes.find((item) => item.value === mode) ?? sortingModes[0]);
+    const chooseMode = (value: string) => {
+        mode = value;
+        router.put(
+            saveMode(team).url,
+            { sorting_mode: value },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
 
     const team = $derived((page.props.currentTeam as Team).slug);
 
@@ -76,6 +95,7 @@
         return result;
     });
 
+    const taskCount = $derived(tasks.length);
     const plannedCount = $derived(tasks.filter((task) => task.sprintWeek !== null).length);
 
     // The next step: fill the sprint that comes next, or plan one.
@@ -95,6 +115,61 @@
 </script>
 
 <AppHead title="Priority" />
+
+{#snippet taskRow(task: StackTask, rank: number, withProject: boolean)}
+    {@const planned = task.sprintWeek !== null}
+        <span class="w-6 shrink-0 text-end text-xs text-muted-foreground tabular-nums" aria-label={`Number ${rank}`}>
+            {rank}
+        </span>
+        <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span class={cn('text-sm wrap-break-word', planned && 'text-muted-foreground')}>{task.title}</span>
+            <span class="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground tabular-nums">
+                {#if withProject}
+                    <Link
+                        href={showProject({ current_team: team, project: task.projectId })}
+                        class="wrap-break-word underline-offset-4 hover:text-foreground hover:underline"
+                    >
+                        {task.projectName} · {task.areaName}
+                    </Link>
+                {/if}
+                {#if task.status === 'in_progress'}
+                    <span class="font-medium text-accent-foreground">In progress</span>
+                {/if}
+                {#if task.dueDate}
+                    <span
+                        class={cn(
+                            'flex items-center gap-1',
+                            task.isOverdue && 'font-medium text-destructive',
+                            task.isDueSoon && 'font-medium text-foreground',
+                        )}
+                    >
+                        {#if task.isOverdue}
+                            <WarningAltFilled class="size-3.5" />
+                            Overdue, {formatShortDate(task.dueDate)}
+                        {:else if task.isDueSoon}
+                            <Time class="size-3.5" />
+                            Due soon, {formatShortDate(task.dueDate)}
+                        {:else}
+                            Due {formatShortDate(task.dueDate)}
+                        {/if}
+                    </span>
+                {/if}
+                {#if planned && task.sprintWeek}
+                    <span>Planned for the week of {formatShortDate(task.sprintWeek)}</span>
+                {/if}
+            </span>
+        </span>
+        <span
+            class={cn(
+                'flex h-6 min-w-12 shrink-0 items-center justify-center rounded-md border px-1.5 text-xs tabular-nums',
+                task.points === null ? 'border-dashed border-border text-muted-foreground' : 'border-border',
+                planned && 'text-muted-foreground',
+            )}
+        >
+            {task.points === null ? '– pts' : `${task.points} pts`}
+        </span>
+{/snippet}
+
 
 <div class="flex flex-col gap-8 px-4 py-8 sm:py-10">
     <header class="flex flex-wrap items-end justify-between gap-4">
@@ -129,23 +204,48 @@
             <section aria-labelledby="stack-title" class="flex flex-col gap-3 lg:sticky lg:top-6">
                 <div class="space-y-1">
                     <h2 id="stack-title" class="type-section">Your stack</h2>
-                    <p class="text-sm text-muted-foreground">Drag a row, or use its arrows. Changes save at once.</p>
+                    <p class="text-sm text-muted-foreground">
+                        Drag a row, or use its arrows. Changes save at once.
+                        {#if mode === 'deadline'}
+                            In Deadline mode, the stack only breaks ties.
+                        {/if}
+                    </p>
                 </div>
                 <PriorityStack stack={areas} {team} />
             </section>
 
             <section aria-labelledby="tasks-title" class="flex min-w-0 flex-col gap-3">
-                <div class="space-y-1">
-                    <h2 id="tasks-title" class="type-section">What comes first</h2>
-                    <p class="text-sm text-muted-foreground tabular-nums">
-                        {#if taskCount === 0}
-                            No open tasks.
-                        {:else}
-                            {taskCount} open {taskCount === 1 ? 'task' : 'tasks'}, by project, then by
-                            deadline.{#if plannedCount > 0}{' '}
-                                {plannedCount} already in a sprint.{/if}
-                        {/if}
-                    </p>
+                <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+                    <div class="min-w-0 space-y-1">
+                        <h2 id="tasks-title" class="type-section">What comes first</h2>
+                        <p class="text-sm text-pretty text-muted-foreground tabular-nums">
+                            {current.description}
+                            {#if taskCount > 0}
+                                {taskCount} open {taskCount === 1 ? 'task' : 'tasks'}{#if plannedCount > 0},
+                                    {plannedCount} already in a sprint{/if}.
+                            {/if}
+                        </p>
+                    </div>
+                    <fieldset class="shrink-0">
+                        <legend class="sr-only">Sort tasks by</legend>
+                        <div class="flex rounded-lg border border-border bg-muted p-0.5">
+                            {#each sortingModes as option (option.value)}
+                                <label
+                                    class="relative cursor-pointer rounded-md px-3 py-1 text-sm text-muted-foreground transition-colors select-none hover:text-foreground has-checked:bg-card has-checked:font-medium has-checked:text-foreground has-checked:shadow-xs has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
+                                >
+                                    <input
+                                        type="radio"
+                                        name="sorting_mode"
+                                        value={option.value}
+                                        checked={mode === option.value}
+                                        onchange={() => chooseMode(option.value)}
+                                        class="sr-only"
+                                    />
+                                    {option.label}
+                                </label>
+                            {/each}
+                        </div>
+                    </fieldset>
                 </div>
 
                 {#if tasks.length === 0}
@@ -157,6 +257,13 @@
                             Open Projects
                         </Link>
                     </div>
+                {:else if mode !== 'stack'}
+                    <!-- Other modes mix projects, so each row names its project. -->
+                    <ol class="overflow-hidden rounded-lg border border-border bg-card">
+                        {#each tasks as task, index (task.id)}
+                            <li animate:flip={motion()} class="flex min-h-12 items-center gap-3 border-t border-border bg-card py-2 pr-3 pl-3 first:border-t-0">{@render taskRow(task, index + 1, true)}</li>
+                        {/each}
+                    </ol>
                 {:else}
                     <ol class="flex flex-col gap-4">
                         {#each groups as group (group.projectId)}
@@ -173,73 +280,12 @@
                                 </h3>
                                 <ol class="overflow-hidden rounded-lg border border-border bg-card">
                                     {#each group.tasks as { task, rank } (task.id)}
-                                        {@const planned = task.sprintWeek !== null}
-                                        <li
-                                            class="flex min-h-12 items-center gap-3 border-t border-border py-2 pr-3 pl-3 first:border-t-0"
-                                        >
-                                            <span
-                                                class="w-6 shrink-0 text-end text-xs text-muted-foreground tabular-nums"
-                                                aria-label={`Number ${rank}`}
-                                            >
-                                                {rank}
-                                            </span>
-                                            <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-                                                <span
-                                                    class={cn(
-                                                        'text-sm wrap-break-word',
-                                                        planned && 'text-muted-foreground',
-                                                    )}
-                                                >
-                                                    {task.title}
-                                                </span>
-                                                {#if task.dueDate || planned || task.status === 'in_progress'}
-                                                    <span class="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground tabular-nums">
-                                                        {#if task.status === 'in_progress'}
-                                                            <span class="font-medium text-accent-foreground">In progress</span>
-                                                        {/if}
-                                                        {#if task.dueDate}
-                                                            <span
-                                                                class={cn(
-                                                                    'flex items-center gap-1',
-                                                                    task.isOverdue && 'font-medium text-destructive',
-                                                                )}
-                                                            >
-                                                                {#if task.isOverdue}
-                                                                    <WarningAltFilled class="size-3.5" />
-                                                                    Overdue, {formatShortDate(task.dueDate)}
-                                                                {:else}
-                                                                    Due {formatShortDate(task.dueDate)}
-                                                                {/if}
-                                                            </span>
-                                                        {/if}
-                                                        {#if planned && task.sprintWeek}
-                                                            <span>Planned for the week of {formatShortDate(task.sprintWeek)}</span>
-                                                        {/if}
-                                                    </span>
-                                                {/if}
-                                            </span>
-                                            <span
-                                                class={cn(
-                                                    'flex h-6 min-w-12 shrink-0 items-center justify-center rounded-md border px-1.5 text-xs tabular-nums',
-                                                    task.points === null
-                                                        ? 'border-dashed border-border text-muted-foreground'
-                                                        : 'border-border',
-                                                    planned && 'text-muted-foreground',
-                                                )}
-                                            >
-                                                {task.points === null ? '– pts' : `${task.points} pts`}
-                                            </span>
-                                        </li>
+                                        <li class="flex min-h-12 items-center gap-3 border-t border-border bg-card py-2 pr-3 pl-3 first:border-t-0">{@render taskRow(task, rank, false)}</li>
                                     {/each}
                                 </ol>
                             </li>
                         {/each}
                     </ol>
-                    {#if taskCount > tasks.length}
-                        <p class="text-xs text-muted-foreground">
-                            The list shows the first {tasks.length} of {taskCount} open tasks.
-                        </p>
-                    {/if}
                 {/if}
             </section>
         </div>
