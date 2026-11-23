@@ -2,11 +2,12 @@
 
 namespace App\Providers;
 
-use App\Priority\StackOrder;
+use App\Enums\SortingMode;
 use App\Priority\TaskOrder;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -20,8 +21,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // The way Tasks are put in order (FR-5). ITERA-08 makes it a user setting.
-        $this->app->bind(TaskOrder::class, StackOrder::class);
+        // The way Tasks are put in order (FR-5): the signed-in user's sorting
+        // mode (ITERA-08), or Stack Order without a user.
+        $this->app->bind(TaskOrder::class, function (Application $app): TaskOrder {
+            $mode = $app->make('auth')->user()?->sorting_mode;
+
+            return ($mode instanceof SortingMode ? $mode : SortingMode::Stack)->strategy();
+        });
     }
 
     /**
