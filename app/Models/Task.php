@@ -29,6 +29,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $updated_at
  * @property-read Project $project
  * @property-read Collection<int, SprintCommitment> $commitments
+ * @property-read Collection<int, Subtask> $subtasks
+ * @property-read int|null $subtasks_count
+ * @property-read int|null $completed_subtasks_count
  */
 #[Fillable(['title', 'description', 'status', 'story_points', 'due_date'])]
 class Task extends Model
@@ -78,6 +81,53 @@ class Task extends Model
     public function commitments(): HasMany
     {
         return $this->hasMany(SprintCommitment::class);
+    }
+
+    /**
+     * Get the Subtasks of the Task, in their list order.
+     *
+     * @return HasMany<Subtask, $this>
+     */
+    public function subtasks(): HasMany
+    {
+        return $this->hasMany(Subtask::class)->orderBy('position')->orderBy('id');
+    }
+
+    /**
+     * Add the Subtask counts to the query, for the progress of each Task.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeWithSubtaskProgress(Builder $query): void
+    {
+        $query->withCount([
+            'subtasks',
+            'subtasks as completed_subtasks_count' => fn (Builder $subtasks) => $subtasks->where('completed', true),
+        ]);
+    }
+
+    /**
+     * The progress of the Task from its Subtasks: the counts and the percent
+     * complete. Null when the Task has no Subtasks. The progress does not
+     * change the story points or the status of the Task.
+     *
+     * @return array{done: int, total: int, percent: int}|null
+     */
+    public function subtaskProgress(): ?array
+    {
+        $total = (int) ($this->subtasks_count ?? $this->subtasks->count());
+
+        if ($total === 0) {
+            return null;
+        }
+
+        $done = (int) ($this->completed_subtasks_count ?? $this->subtasks->where('completed', true)->count());
+
+        return [
+            'done' => $done,
+            'total' => $total,
+            'percent' => intdiv($done * 100, $total),
+        ];
     }
 
     /**

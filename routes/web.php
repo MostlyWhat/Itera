@@ -5,6 +5,7 @@ use App\Http\Controllers\Areas\AreaController;
 use App\Http\Controllers\Areas\ProjectController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Sprints\SprintController;
+use App\Http\Controllers\Tasks\SubtaskController;
 use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\Tasks\TaskStatusController;
 use App\Http\Controllers\Teams\TeamInvitationController;
@@ -50,6 +51,11 @@ Route::prefix('{current_team}')
 
         // Kanban board on the dashboard (ITERA-05)
         Route::patch('tasks/{task}/status', TaskStatusController::class)->name('tasks.status.update');
+
+        // Subtasks (ITERA-06)
+        Route::post('tasks/{task}/subtasks', [SubtaskController::class, 'store'])->name('subtasks.store');
+        Route::patch('subtasks/{subtask}', [SubtaskController::class, 'update'])->name('subtasks.update');
+        Route::delete('subtasks/{subtask}', [SubtaskController::class, 'destroy'])->name('subtasks.destroy');
     });
 
 Route::middleware(['auth'])->group(function () {
