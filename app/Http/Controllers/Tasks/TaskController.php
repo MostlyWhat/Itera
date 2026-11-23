@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Tasks;
 
+use App\Actions\Tasks\CreateWeeklyTasks;
 use App\Enums\StoryPoints;
 use App\Enums\TaskStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tasks\SaveTaskRequest;
 use App\Models\Project;
+use App\Models\RecurrenceTemplate;
 use App\Models\Subtask;
 use App\Models\Task;
 use App\Queries\ProjectNavigation;
@@ -66,12 +68,20 @@ class TaskController extends Controller
                 'storyPoints' => $task->story_points?->value,
                 'dueDate' => $task->due_date?->toDateString(),
                 'isOverdue' => $task->isOverdue(),
+                'isWeekly' => $task->recurrence_template_id !== null,
                 'progress' => $task->subtaskProgress(),
                 'subtasks' => $task->subtasks->map(fn (Subtask $subtask) => [
                     'id' => $subtask->id,
                     'title' => $subtask->title,
                     'completed' => $subtask->completed,
                 ])->values()->all(),
+            ]),
+            'weekly' => $project->recurrenceTemplates()->get()->map(fn (RecurrenceTemplate $template) => [
+                'id' => $template->id,
+                'title' => $template->title,
+                'weekday' => $template->weekday,
+                'weekdayName' => $template->weekdayName(),
+                'storyPoints' => $template->story_points?->value,
             ]),
             'storyPointOptions' => StoryPoints::values(),
             'statusOptions' => collect(TaskStatus::cases())->map(fn (TaskStatus $status) => [
@@ -84,7 +94,7 @@ class TaskController extends Controller
     /**
      * Add a Task to a Project.
      */
-    public function store(SaveTaskRequest $request, Project $project): RedirectResponse
+    public function store(SaveTaskRequest $request, Project $project, CreateWeeklyTasks $weekly): RedirectResponse
     {
         Gate::authorize('update', $project);
 
@@ -94,7 +104,23 @@ class TaskController extends Controller
             ]);
         }
 
-        $project->tasks()->create($request->validated());
+        $weekday = $request->validated('repeat_weekday');
+
+        if ($weekday !== null) {
+            // A weekly task: save the template, then make this week's and
+            // next week's Tasks from it.
+            $template = $project->recurrenceTemplates()->create([
+                ...$request->safe()->only(['title', 'description', 'story_points']),
+                'weekday' => (int) $weekday,
+            ]);
+            $weekly->forTemplate($template);
+
+            Inertia::flash('toast', ['type' => 'success', 'message' => __('Weekly task added. It repeats every :day.', ['day' => $template->weekdayName()])]);
+
+            return back();
+        }
+
+        $project->tasks()->create($request->safe()->except('repeat_weekday'));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Task added.')]);
 
@@ -108,7 +134,7 @@ class TaskController extends Controller
     {
         Gate::authorize('update', $task);
 
-        $task->update($request->validated());
+        $task->update($request->safe()->except('repeat_weekday'));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Task saved.')]);
 
