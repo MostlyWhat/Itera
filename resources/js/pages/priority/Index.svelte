@@ -10,6 +10,8 @@
 <script lang="ts">
     import { Link, page, router } from '@inertiajs/svelte';
     import ArrowRight from 'carbon-icons-svelte/lib/ArrowRight.svelte';
+    import ChevronDown from 'carbon-icons-svelte/lib/ChevronDown.svelte';
+    import Layers from 'carbon-icons-svelte/lib/Layers.svelte';
     import Calendar from 'carbon-icons-svelte/lib/Calendar.svelte';
     import ListNumbered from 'carbon-icons-svelte/lib/ListNumbered.svelte';
     import RadioButton from 'carbon-icons-svelte/lib/RadioButton.svelte';
@@ -21,6 +23,8 @@
     import { flip } from 'svelte/animate';
     import { quintOut } from 'svelte/easing';
     import { prefersReducedMotion } from 'svelte/motion';
+    import { SvelteSet } from 'svelte/reactivity';
+    import { slide } from 'svelte/transition';
     import AppHead from '@/components/AppHead.svelte';
     import PriorityStack from '@/components/priority/PriorityStack.svelte';
     import { buttonVariants } from '@/components/ui/button';
@@ -87,6 +91,38 @@
         balanced: ScalesTipped,
     };
     const modeLabel = $derived(sortingModes.find((item) => item.value === mode)?.label ?? '');
+    const ModeIcon = $derived(modeIcons[mode] ?? ListNumbered);
+    const stackSummary = $derived(
+        `${areas.length} ${areas.length === 1 ? 'area' : 'areas'}, ${areas[0]?.name ?? ''} first`,
+    );
+
+    // The open panels of the rules. Both start closed, so the queue leads.
+    // The browser keeps the choice. Storage can be blocked, so it is guarded.
+    const panelKey = 'itera.priority-panels';
+    const readPanels = (): string[] => {
+        try {
+            const value = JSON.parse(localStorage.getItem(panelKey) ?? '[]');
+
+            return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
+        } catch {
+            return [];
+        }
+    };
+    const panels = new SvelteSet<string>(typeof window === 'undefined' ? [] : readPanels());
+    const togglePanel = (name: string) => {
+        if (panels.has(name)) {
+            panels.delete(name);
+        } else {
+            panels.add(name);
+        }
+
+        try {
+            localStorage.setItem(panelKey, JSON.stringify([...panels]));
+        } catch {
+            // The choice lasts for this page only.
+        }
+    };
+    const reveal = () => ({ duration: prefersReducedMotion.current ? 0 : 200, easing: quintOut });
 
     // The room in the next sprint, and the open Tasks that fill it in
     // queue order. Tasks already in a sprint do not count.
@@ -198,63 +234,117 @@
             <!-- Sticky only when the rules fit the screen. A taller column would hide its lower rows. -->
             <div
                 bind:this={rules}
-                class={cn('flex flex-col gap-10', rulesFit && 'lg:sticky lg:top-6')}
+                class={cn('flex flex-col', rulesFit && 'lg:sticky lg:top-6')}
             >
-                <section aria-labelledby="picks-title" class="flex flex-col gap-3">
-                    <h2 id="picks-title" class="type-section">How Itera picks</h2>
-                    <fieldset class="flex flex-col gap-2">
-                        <legend class="sr-only">Sort tasks by</legend>
-                        {#each sortingModes as option (option.value)}
-                            {@const Icon = modeIcons[option.value] ?? ListNumbered}
-                            {@const chosen = mode === option.value}
-                            <label
-                                class={cn(
-                                    'flex cursor-pointer items-start gap-3 rounded-lg border bg-card px-3.5 py-3 transition-[border-color,background-color,scale] duration-150 select-none has-focus-visible:ring-3 has-focus-visible:ring-ring/50 motion-safe:active:scale-[0.98]',
-                                    chosen ? 'border-primary bg-accent/40' : 'border-border hover:border-input hover:bg-muted/50',
-                                )}
+                <!--
+                    The two rules as one accordion (Carbon: progressive disclosure).
+                    Each closed row says what is set, so nothing important is hidden,
+                    and the queue stays in front.
+                -->
+                <div class="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
+                    <section aria-labelledby="picks-title">
+                        <h2 id="picks-title">
+                            <button
+                                type="button"
+                                aria-expanded={panels.has('picks')}
+                                aria-controls="picks-panel"
+                                onclick={() => togglePanel('picks')}
+                                class="flex min-h-14 w-full items-center gap-3 px-3.5 py-2.5 text-start transition-colors duration-150 hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset"
                             >
-                                <input
-                                    type="radio"
-                                    name="sorting_mode"
-                                    value={option.value}
-                                    checked={chosen}
-                                    onchange={() => chooseMode(option.value)}
-                                    class="sr-only"
-                                />
-                                <span
+                                <span class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground" aria-hidden="true">
+                                    <ModeIcon class="size-4" />
+                                </span>
+                                <span class="flex min-w-0 flex-1 flex-col">
+                                    <span class="text-xs text-muted-foreground">How Itera picks</span>
+                                    <span class="truncate text-sm font-medium">{modeLabel}</span>
+                                </span>
+                                <ChevronDown
                                     class={cn(
-                                        'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md transition-colors duration-150',
-                                        chosen ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+                                        'size-4 shrink-0 text-muted-foreground motion-safe:transition-transform motion-safe:duration-200',
+                                        panels.has('picks') && 'rotate-180',
                                     )}
                                     aria-hidden="true"
-                                >
-                                    <Icon class="size-4" />
-                                </span>
-                                <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-                                    <span class="text-sm font-medium">{option.label}</span>
-                                    <span class="text-xs text-pretty text-muted-foreground">{option.description}</span>
-                                </span>
-                                <span class={cn('mt-0.5 shrink-0', chosen ? 'text-primary' : 'text-muted-foreground/60')} aria-hidden="true">
-                                    {#if chosen}
-                                        <RadioButtonChecked class="size-4" />
-                                    {:else}
-                                        <RadioButton class="size-4" />
-                                    {/if}
-                                </span>
-                            </label>
-                        {/each}
-                    </fieldset>
-                </section>
+                                />
+                            </button>
+                        </h2>
+                        {#if panels.has('picks')}
+                            <div id="picks-panel" transition:slide={reveal()} class="px-3.5 pb-3.5">
+                                <fieldset class="flex flex-col gap-2">
+                                    <legend class="sr-only">Sort tasks by</legend>
+                                    {#each sortingModes as option (option.value)}
+                                        {@const Icon = modeIcons[option.value] ?? ListNumbered}
+                                        {@const chosen = mode === option.value}
+                                        <label
+                                            class={cn(
+                                                'flex cursor-pointer items-start gap-3 rounded-md border px-3 py-2.5 transition-[border-color,background-color,scale] duration-150 select-none has-focus-visible:ring-3 has-focus-visible:ring-ring/50 motion-safe:active:scale-[0.98]',
+                                                chosen ? 'border-primary bg-accent/40' : 'border-border hover:border-input hover:bg-muted/50',
+                                            )}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="sorting_mode"
+                                                value={option.value}
+                                                checked={chosen}
+                                                onchange={() => chooseMode(option.value)}
+                                                class="sr-only"
+                                            />
+                                            <Icon
+                                                class={cn('mt-0.5 size-4 shrink-0', chosen ? 'text-primary' : 'text-muted-foreground')}
+                                                aria-hidden="true"
+                                            />
+                                            <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                                                <span class="text-sm font-medium">{option.label}</span>
+                                                <span class="text-xs text-pretty text-muted-foreground">{option.description}</span>
+                                            </span>
+                                            <span class={cn('mt-0.5 shrink-0', chosen ? 'text-primary' : 'text-muted-foreground/60')} aria-hidden="true">
+                                                {#if chosen}
+                                                    <RadioButtonChecked class="size-4" />
+                                                {:else}
+                                                    <RadioButton class="size-4" />
+                                                {/if}
+                                            </span>
+                                        </label>
+                                    {/each}
+                                </fieldset>
+                            </div>
+                        {/if}
+                    </section>
 
-                <section aria-labelledby="stack-title" class="flex flex-col gap-3">
-                    <div class="space-y-1">
-                        <h2 id="stack-title" class="type-section">Your stack</h2>
-                        <p class="text-sm text-muted-foreground">
-                            Most important at the top. Drag a row, or use its arrows.
-                        </p>
-                    </div>
-                    <PriorityStack stack={areas} {team} />
-                </section>
+                    <section aria-labelledby="stack-title">
+                        <h2 id="stack-title">
+                            <button
+                                type="button"
+                                aria-expanded={panels.has('stack')}
+                                aria-controls="stack-panel"
+                                onclick={() => togglePanel('stack')}
+                                class="flex min-h-14 w-full items-center gap-3 px-3.5 py-2.5 text-start transition-colors duration-150 hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset"
+                            >
+                                <span class="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true">
+                                    <Layers class="size-4" />
+                                </span>
+                                <span class="flex min-w-0 flex-1 flex-col">
+                                    <span class="text-xs text-muted-foreground">Your stack</span>
+                                    <span class="truncate text-sm font-medium" title={stackSummary}>{stackSummary}</span>
+                                </span>
+                                <ChevronDown
+                                    class={cn(
+                                        'size-4 shrink-0 text-muted-foreground motion-safe:transition-transform motion-safe:duration-200',
+                                        panels.has('stack') && 'rotate-180',
+                                    )}
+                                    aria-hidden="true"
+                                />
+                            </button>
+                        </h2>
+                        {#if panels.has('stack')}
+                            <div id="stack-panel" transition:slide={reveal()} class="flex flex-col gap-2 px-3.5 pb-3.5">
+                                <p class="text-xs text-muted-foreground">
+                                    Most important at the top. Drag a row, or use its menu. Select an area to order its projects.
+                                </p>
+                                <PriorityStack stack={areas} {team} />
+                            </div>
+                        {/if}
+                    </section>
+                </div>
             </div>
 
             <!-- The result. -->
