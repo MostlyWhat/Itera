@@ -36,7 +36,7 @@ enum SortingMode: string
     {
         return match ($this) {
             self::Stack => 'Your priority stack first: by area, then project, then deadline.',
-            self::Deadline => 'The nearest deadline first. Tasks without a deadline come last.',
+            self::Deadline => 'The nearest deadline first. Tasks without a deadline come last, and your stack breaks ties.',
             self::Balanced => 'Overdue tasks and tasks due in the next '.BalancedOrder::SOON_DAYS.' days first, then your priority stack.',
         };
     }

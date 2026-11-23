@@ -74,19 +74,22 @@ class PriorityController extends Controller
      * The Sprint to add Tasks to next: this week's Sprint, or else the
      * nearest upcoming one. Null when the team has neither.
      *
-     * @return array{id: int, weekStart: string, current: bool}|null
+     * @return array{id: int, weekStart: string, current: bool, targetPoints: int|null, committedPoints: int}|null
      */
     private function nextSprint(Team $team): ?array
     {
         $sprint = $team->sprints()
             ->currentOrUpcoming()
             ->reorder('week_start')
+            ->with('commitments')
             ->first();
 
         return $sprint === null ? null : [
             'id' => $sprint->id,
             'weekStart' => $sprint->week_start->toDateString(),
             'current' => $sprint->isCurrent(),
+            'targetPoints' => $sprint->target_points,
+            'committedPoints' => $sprint->committedPoints(),
         ];
     }
 }

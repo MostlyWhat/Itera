@@ -172,3 +172,18 @@ test('a deadline that is not soon moves up in deadline mode but not in balanced 
         'Swap a shift', 'Email the manager', 'Write the method', 'Read the manual', 'Plan the rota', 'Update the CV',
     ]);
 });
+
+test('the priority page gives the room left in the next sprint', function () {
+    [$user, $slug] = userWithMixedTasks();
+    $sprint = Sprint::factory()->for($user->currentTeam)->create(['week_start' => '2026-11-16', 'target_points' => 20]);
+    $task = Task::query()->where('title', 'Swap a shift')->first();
+    SprintCommitment::factory()->for($sprint)->create(['task_id' => $task->id, 'committed_points' => 8]);
+
+    $this->actingAs($user)
+        ->get(route('priority', $slug))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('nextSprint.id', $sprint->id)
+            ->where('nextSprint.current', true)
+            ->where('nextSprint.targetPoints', 20)
+            ->where('nextSprint.committedPoints', 8));
+});
