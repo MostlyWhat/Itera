@@ -19,13 +19,15 @@
     // Props from the dialog trigger. Spread them on the trigger element.
     type TriggerProps = Record<string, unknown>;
 
+    // `open` is bindable, so a menu item can open the dialog without being
+    // its trigger. A trigger inside a menu would close with the menu.
     let {
         children: trigger,
+        open = $bindable(false),
     }: {
         children?: Snippet<[TriggerProps]>;
+        open?: boolean;
     } = $props();
-
-    let open = $state(false);
     let formKey = $state(0);
 
     function handleOpenChange(value: boolean) {
@@ -38,11 +40,13 @@
 </script>
 
 <Dialog {open} onOpenChange={handleOpenChange}>
-    <DialogTrigger>
-        {#snippet child({ props })}
-            {@render trigger?.(props)}
-        {/snippet}
-    </DialogTrigger>
+    {#if trigger}
+        <DialogTrigger>
+            {#snippet child({ props })}
+                {@render trigger(props)}
+            {/snippet}
+        </DialogTrigger>
+    {/if}
     <DialogContent>
         {#key formKey}
             <Form

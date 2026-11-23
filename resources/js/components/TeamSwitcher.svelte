@@ -4,7 +4,6 @@
     import ChevronSort from 'carbon-icons-svelte/lib/ChevronSort.svelte';
     import Add from 'carbon-icons-svelte/lib/Add.svelte';
     import Group from 'carbon-icons-svelte/lib/Group.svelte';
-    import { mergeProps } from 'bits-ui';
     import { onMount } from 'svelte';
     import CreateTeamModal from '@/components/CreateTeamModal.svelte';
     import { Button } from '@/components/ui/button';
@@ -22,6 +21,12 @@
 
     let { inHeader = false }: { inHeader?: boolean } = $props();
     let isMobile = $state(false);
+
+    // The New team dialog sits outside the menu. Inside the menu, it closed
+    // together with the menu, so it showed and then disappeared. It opens
+    // on the next frame, after the menu gives the focus back.
+    let creating = $state(false);
+    const openCreate = () => requestAnimationFrame(() => (creating = true));
 
     const currentTeam = $derived(page.props.currentTeam as Team | null);
     const teams = $derived((page.props.teams ?? []) as Team[]);
@@ -130,22 +135,15 @@
 
         <DropdownMenuSeparator />
 
-        <CreateTeamModal>
-            {#snippet children(triggerProps)}
-                <DropdownMenuItem>
-                    {#snippet child({ props })}
-                        <button
-                            {...mergeProps(props, triggerProps)}
-                            type="button"
-                            class={cn(props.class as string, 'w-full gap-2', !inHeader && 'p-2')}
-                            data-test="team-switcher-new-team"
-                        >
-                            <Add class={inHeader ? 'size-4' : 'h-4 w-4'} />
-                            <span class="text-muted-foreground">New team</span>
-                        </button>
-                    {/snippet}
-                </DropdownMenuItem>
-            {/snippet}
-        </CreateTeamModal>
+        <DropdownMenuItem
+            class={cn('gap-2', !inHeader && 'p-2')}
+            data-test="team-switcher-new-team"
+            onSelect={openCreate}
+        >
+            <Add class={inHeader ? 'size-4' : 'h-4 w-4'} />
+            <span class="text-muted-foreground">New team</span>
+        </DropdownMenuItem>
     </DropdownMenuContent>
 </DropdownMenu>
+
+<CreateTeamModal bind:open={creating} />
