@@ -32,7 +32,6 @@
     import ChevronRight from 'carbon-icons-svelte/lib/ChevronRight.svelte';
     import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
     import Repeat from 'carbon-icons-svelte/lib/Repeat.svelte';
-    import ListChecked from 'carbon-icons-svelte/lib/ListChecked.svelte';
     import OverflowMenuVertical from 'carbon-icons-svelte/lib/OverflowMenuVertical.svelte';
     import TrashCan from 'carbon-icons-svelte/lib/TrashCan.svelte';
     import Undo from 'carbon-icons-svelte/lib/Undo.svelte';
@@ -42,11 +41,10 @@
     import ProjectForm from '@/components/projects/ProjectForm.svelte';
     import type { ProjectNavigation } from '@/components/projects/ProjectRail.svelte';
     import ProjectsShell from '@/components/projects/ProjectsShell.svelte';
-    import SubtaskList from '@/components/tasks/SubtaskList.svelte';
     import type { SubtaskItem } from '@/components/tasks/SubtaskList.svelte';
     import SubtaskProgress from '@/components/tasks/SubtaskProgress.svelte';
     import type { Progress } from '@/components/tasks/SubtaskProgress.svelte';
-    import TaskForm from '@/components/tasks/TaskForm.svelte';
+    import TaskPanel from '@/components/tasks/TaskPanel.svelte';
     import {
         AlertDialog,
         AlertDialogAction,
@@ -72,12 +70,7 @@
         unarchive as unarchiveProject,
         update as updateProject,
     } from '@/routes/projects';
-    import {
-        destroy as destroyTask,
-        store as storeTask,
-        update as updateTask,
-    } from '@/routes/tasks';
-    import { destroy as stopWeekly } from '@/routes/weekly';
+    import { destroy as destroyTask } from '@/routes/tasks';
     import { update as updateStatus } from '@/routes/tasks/status';
 
     type TaskItem = {
@@ -90,6 +83,8 @@
         dueDate: string | null;
         isOverdue: boolean;
         isWeekly: boolean;
+        weeklyId: number | null;
+        repeatsOn: string | null;
         progress: Progress | null;
         subtasks: SubtaskItem[];
     };
@@ -100,7 +95,6 @@
         tasks,
         storyPointOptions,
         statusOptions,
-        weekly,
     }: {
         navigation: ProjectNavigation;
         project: {
@@ -113,23 +107,31 @@
         tasks: TaskItem[];
         storyPointOptions: number[];
         statusOptions: { value: string; label: string }[];
-        weekly: { id: number; title: string; weekday: number; weekdayName: string; storyPoints: number | null }[];
     } = $props();
 
     const team = $derived((page.props.currentTeam as Team).slug);
 
-    // Data entry happens in dialogs, so the list never moves under the user.
-    // `taskDialog` is "new", a Task to edit, or null when closed.
-    let taskDialog = $state<'new' | TaskItem | null>(null);
-    let taskDialogOpen = $state(false);
+    // One side panel adds and edits a Task, with its repeat and its
+    // subtasks. `panelId` is "new", the id of a Task, or null. The Task comes
+    // from the props, so the panel shows each change after the reload.
+    let panelId = $state<'new' | number | null>(null);
+    let panelOpen = $state(false);
     let projectDialogOpen = $state(false);
+    const panelTask = $derived(
+        typeof panelId === 'number' ? (tasks.find((task) => task.id === panelId) ?? null) : null,
+    );
 
     const openTask = (value: 'new' | TaskItem) => {
-        taskDialog = value;
-        taskDialogOpen = true;
+        panelId = value === 'new' ? 'new' : value.id;
+        panelOpen = true;
     };
-    const closeTask = () => (taskDialogOpen = false);
-    const editedTask = $derived(taskDialog !== null && taskDialog !== 'new' ? taskDialog : null);
+
+    // A deleted Task leaves the props, so its panel closes.
+    $effect(() => {
+        if (typeof panelId === 'number' && panelTask === null) {
+            panelOpen = false;
+        }
+    });
 
     // Descriptions show two lines. A click on the text shows all of it.
     const expanded = new SvelteSet<number>();
@@ -141,16 +143,6 @@
         }
     };
     let deleting = $state<TaskItem | null>(null);
-
-    // The details and the subtask checklist of one Task, in a dialog. The Task comes from
-    // the props by id, so the list updates after each change.
-    let detailId = $state<number | null>(null);
-    let detailOpen = $state(false);
-    const detailTask = $derived(tasks.find((task) => task.id === detailId) ?? null);
-    const openDetail = (task: TaskItem) => {
-        detailId = task.id;
-        detailOpen = true;
-    };
 
     const openTasks = $derived(tasks.filter((task) => task.status !== 'done'));
     const doneTasks = $derived(tasks.filter((task) => task.status === 'done'));
@@ -185,14 +177,14 @@
 <AppHead title={project.name} />
 
 {#snippet taskRow(task: TaskItem)}
-    <!-- The title button is the keyboard path to the details. -->
+    <!-- The title button is the keyboard path to the task panel. -->
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
     <li
         class="group/row cursor-pointer border-t border-border transition-colors first:border-t-0 hover:bg-muted/40"
         onclick={(event: MouseEvent) => {
             // The checkbox, the description, and the menu do their own work.
             if (!(event.target as HTMLElement).closest('button, a, [role="menu"]')) {
-                openDetail(task);
+                openTask(task);
             }
         }}
     >
@@ -222,7 +214,7 @@
                     <div class="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
                         <button
                             type="button"
-                            onclick={() => openDetail(task)}
+                            onclick={() => openTask(task)}
                             class={cn(
                                 'min-w-0 rounded-sm text-start text-sm wrap-break-word focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
                                 task.status === 'done' &&
@@ -230,7 +222,7 @@
                             )}
                         >
                             {task.title}
-                            <span class="sr-only">, show details</span>
+                            <span class="sr-only">, open the task</span>
                         </button>
                         {#if task.isWeekly}
                             <span class="flex w-fit shrink-0 items-center gap-1 text-xs text-muted-foreground">
@@ -263,7 +255,7 @@
                     {#if task.progress}
                         <button
                             type="button"
-                            onclick={() => openDetail(task)}
+                            onclick={() => openTask(task)}
                             class="rounded-sm px-1 py-0.5 hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                             aria-label={`Subtasks of ${task.title}: ${task.progress.done} of ${task.progress.total} done`}
                         >
@@ -323,10 +315,6 @@
                         <DropdownMenuItem onSelect={() => openTask(task)}>
                             <Edit class="size-4" />
                             Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => openDetail(task)}>
-                            <ListChecked class="size-4" />
-                            Subtasks
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -450,37 +438,6 @@
         {/if}
     </section>
 
-    {#if weekly.length > 0}
-        <section aria-labelledby="weekly-title" class="mt-6 flex flex-col gap-2">
-            <h2 id="weekly-title" class="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                <Repeat class="size-4" aria-hidden="true" />
-                Repeats every week
-            </h2>
-            <ul class="overflow-hidden rounded-lg border border-border bg-card">
-                {#each weekly as item (item.id)}
-                    <li class="flex min-h-11 items-center gap-3 border-t border-border py-1.5 pr-2 pl-4 first:border-t-0">
-                        <span class="min-w-0 flex-1 text-sm wrap-break-word">{item.title}</span>
-                        <span class="shrink-0 text-xs text-muted-foreground">Every {item.weekdayName}</span>
-                        {#if !project.archived}
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                class="h-8 shrink-0 text-muted-foreground hover:text-foreground"
-                                aria-label={`Stop repeating ${item.title}`}
-                                onclick={() =>
-                                    router.delete(stopWeekly({ current_team: team, recurrenceTemplate: item.id }).url, {
-                                        preserveScroll: true,
-                                    })}
-                            >
-                                Stop repeating
-                            </Button>
-                        {/if}
-                    </li>
-                {/each}
-            </ul>
-        </section>
-    {/if}
-
     {#if doneTasks.length > 0}
         <details class="group mt-6">
             <summary
@@ -499,89 +456,14 @@
     {/if}
 </ProjectsShell>
 
-<FormDialog
-    bind:open={taskDialogOpen}
-    title={editedTask ? 'Edit task' : 'New task'}
-    description={editedTask ? undefined : `In ${project.name}.`}
-    size="lg"
->
-    {#key editedTask?.id ?? 'new'}
-        {#if editedTask}
-            <TaskForm
-                action={updateTask.form({ current_team: team, task: editedTask.id })}
-                task={editedTask}
-                pointOptions={storyPointOptions}
-                {statusOptions}
-                submitLabel="Save task"
-                onDone={closeTask}
-                onCancel={closeTask}
-            />
-        {:else}
-            <TaskForm
-                action={storeTask.form({ current_team: team, project: project.id })}
-                pointOptions={storyPointOptions}
-                submitLabel="Add task"
-                onDone={closeTask}
-                onCancel={closeTask}
-            />
-        {/if}
-    {/key}
-</FormDialog>
-
-<FormDialog
-    bind:open={detailOpen}
-    title={detailTask?.title ?? 'Task'}
-    size="lg"
->
-    {#if detailTask}
-        <dl class="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm">
-            <dt class="text-muted-foreground">Status</dt>
-            <dd>{detailTask.statusLabel}</dd>
-            <dt class="text-muted-foreground">Story points</dt>
-            <dd class="tabular-nums">{detailTask.storyPoints ?? 'None'}</dd>
-            <dt class="text-muted-foreground">Deadline</dt>
-            <dd class={cn('tabular-nums', detailTask.isOverdue && 'font-medium text-destructive')}>
-                {#if detailTask.dueDate}
-                    {formatShortDate(detailTask.dueDate)}{detailTask.isOverdue ? ', overdue' : ''}
-                {:else}
-                    None
-                {/if}
-            </dd>
-        </dl>
-        {#if detailTask.description}
-            <div class="flex flex-col gap-2">
-                <h3 class="text-sm font-medium">Description</h3>
-                <p class="max-h-60 overflow-y-auto text-sm whitespace-pre-line wrap-break-word text-muted-foreground">{detailTask.description}</p>
-            </div>
-        {/if}
-        <SubtaskList
-            {team}
-            taskId={detailTask.id}
-            subtasks={detailTask.subtasks}
-            progress={detailTask.progress}
-            disabled={project.archived}
-        />
-        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="ghost" onclick={() => (detailOpen = false)}>Close</Button>
-            {#if !project.archived}
-                <Button
-                    variant="outline"
-                    class="gap-1.5"
-                    onclick={() => {
-                        const task = detailTask;
-                        detailOpen = false;
-                        if (task) {
-                            openTask(task);
-                        }
-                    }}
-                >
-                    <Edit class="size-4" />
-                    Edit task
-                </Button>
-            {/if}
-        </div>
-    {/if}
-</FormDialog>
+<TaskPanel
+    bind:open={panelOpen}
+    {team}
+    project={{ id: project.id, name: project.name, areaName: project.areaName, archived: project.archived }}
+    task={panelTask}
+    pointOptions={storyPointOptions}
+    {statusOptions}
+/>
 
 <FormDialog bind:open={projectDialogOpen} title="Edit project">
     <ProjectForm
