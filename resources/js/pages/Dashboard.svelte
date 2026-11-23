@@ -28,6 +28,10 @@
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
     import FormDialog from '@/components/FormDialog.svelte';
+    import SubtaskList from '@/components/tasks/SubtaskList.svelte';
+    import type { SubtaskItem } from '@/components/tasks/SubtaskList.svelte';
+    import SubtaskProgress from '@/components/tasks/SubtaskProgress.svelte';
+    import type { Progress } from '@/components/tasks/SubtaskProgress.svelte';
     import PendingInvitationsModal from '@/components/PendingInvitationsModal.svelte';
     import PointsMeter from '@/components/sprints/PointsMeter.svelte';
     import { Button, buttonVariants } from '@/components/ui/button';
@@ -51,6 +55,8 @@
         projectName: string;
         projectId: number;
         areaName: string;
+        progress: Progress | null;
+        subtasks: SubtaskItem[];
     };
 
     type Board = {
@@ -310,6 +316,9 @@
                                     <div class="flex items-center justify-between gap-2">
                                         <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                                             <span class="wrap-break-word">{card.projectName}</span>
+                                            {#if card.progress}
+                                                <SubtaskProgress progress={card.progress} />
+                                            {/if}
                                             {#if card.dueDate && card.status !== 'done'}
                                                 <span
                                                     class={cn(
@@ -472,6 +481,12 @@
                 <p class="text-sm text-muted-foreground">No description.</p>
             {/if}
         </div>
+        <SubtaskList
+            {team}
+            taskId={detail.taskId}
+            subtasks={detail.subtasks}
+            progress={detail.progress}
+        />
         <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="ghost" onclick={() => (detailOpen = false)}>Close</Button>
             <Link

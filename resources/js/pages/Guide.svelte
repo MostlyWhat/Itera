@@ -211,7 +211,11 @@
             <span class="font-medium">Done</span> when you finish it.
         </li>
         <li>Drag a card to a column, or use the arrow buttons on the card.</li>
-        <li>Click a card to see its description, story points, and deadline.</li>
+        <li>Click a card to see its description, story points, deadline, and subtasks.</li>
+        <li>
+            Split a big task into subtasks, and tick each one when you finish it. The bar on the card
+            shows the progress. Subtasks give no points: the task gets its points when it is Done.
+        </li>
         <li>Keep few tasks in progress at the same time. Finish one before you start the next.</li>
     </ul>
     <p class="text-muted-foreground">
