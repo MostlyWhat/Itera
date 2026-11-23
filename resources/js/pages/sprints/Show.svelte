@@ -83,6 +83,7 @@
         candidates,
         projects,
         storyPointOptions,
+        sortingLabel,
     }: {
         sprint: {
             id: number;
@@ -99,6 +100,7 @@
         candidates: Candidate[];
         projects: { id: number; name: string; areaName: string }[];
         storyPointOptions: number[];
+        sortingLabel: string;
     } = $props();
 
     const team = $derived((page.props.currentTeam as Team).slug);
@@ -370,8 +372,8 @@
                     >
                 </h2>
                 <p class="-mt-2 text-xs text-muted-foreground">
-                    In the order of your
-                    <Link href={priority(team)} class="font-medium text-foreground underline-offset-4 hover:underline">priority stack</Link>.
+                    Sorted by {sortingLabel}. Change it on the
+                    <Link href={priority(team)} class="font-medium text-foreground underline-offset-4 hover:underline">Priority</Link> page.
                 </p>
 
                 <div class="relative">

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\HasTeams;
+use App\Enums\SortingMode;
 use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -28,6 +29,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $two_factor_confirmed_at
  * @property string|null $remember_token
  * @property int|null $current_team_id
+ * @property int $week_start
+ * @property SortingMode $sorting_mode
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Team|null $currentTeam
@@ -35,7 +38,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property-read Collection<int, Membership> $teamMemberships
  * @property-read Collection<int, Team> $teams
  */
-#[Fillable(['name', 'email', 'password', 'current_team_id', 'week_start'])]
+#[Fillable(['name', 'email', 'password', 'current_team_id', 'week_start', 'sorting_mode'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
@@ -49,6 +52,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
      */
     protected $attributes = [
         'week_start' => 1,
+        'sorting_mode' => 'stack',
     ];
 
     /**
@@ -63,6 +67,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'week_start' => 'integer',
+            'sorting_mode' => SortingMode::class,
         ];
     }
 

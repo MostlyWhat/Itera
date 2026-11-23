@@ -16,10 +16,7 @@ class StackOrder implements TaskOrder
 {
     public function apply(Builder $query): Builder
     {
-        return $query
-            ->select('tasks.*')
-            ->join('projects', 'projects.id', '=', 'tasks.project_id')
-            ->join('areas', 'areas.id', '=', 'projects.area_id')
+        return self::joinStack($query)
             ->orderBy('areas.position')
             ->orderBy('areas.id')
             ->orderBy('projects.position')
@@ -32,14 +29,43 @@ class StackOrder implements TaskOrder
     public function sort(Collection $tasks): Collection
     {
         return $tasks
-            ->sortBy([
-                fn (Task $a, Task $b) => [$a->project->area->position, $a->project->area->id]
-                    <=> [$b->project->area->position, $b->project->area->id],
-                fn (Task $a, Task $b) => [$a->project->position, $a->project->id]
-                    <=> [$b->project->position, $b->project->id],
-                fn (Task $a, Task $b) => [$a->due_date === null, $a->due_date?->toDateString(), $a->id]
-                    <=> [$b->due_date === null, $b->due_date?->toDateString(), $b->id],
+            ->sortBy(fn (Task $task) => [
+                ...self::stackKey($task),
+                $task->due_date === null,
+                $task->due_date?->toDateString(),
+                $task->id,
             ])
             ->values();
+    }
+
+    /**
+     * Join the Project and the Area of each Task, so every strategy can sort
+     * by the priority stack.
+     *
+     * @param  Builder<Task>  $query
+     * @return Builder<Task>
+     */
+    public static function joinStack(Builder $query): Builder
+    {
+        return $query
+            ->select('tasks.*')
+            ->join('projects', 'projects.id', '=', 'tasks.project_id')
+            ->join('areas', 'areas.id', '=', 'projects.area_id');
+    }
+
+    /**
+     * The place of a Task in the priority stack, as values to compare. The
+     * Task needs its Project and Area.
+     *
+     * @return list<int>
+     */
+    public static function stackKey(Task $task): array
+    {
+        return [
+            $task->project->area->position,
+            $task->project->area->id,
+            $task->project->position,
+            $task->project->id,
+        ];
     }
 }
