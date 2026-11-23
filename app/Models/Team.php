@@ -104,7 +104,7 @@ class Team extends Model
      */
     public function areas(): HasMany
     {
-        return $this->hasMany(Area::class)->orderBy('position');
+        return $this->hasMany(Area::class)->orderBy('position')->orderBy('id');
     }
 
     /**
