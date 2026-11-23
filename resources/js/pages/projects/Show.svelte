@@ -31,6 +31,7 @@
     import Checkmark from 'carbon-icons-svelte/lib/Checkmark.svelte';
     import ChevronRight from 'carbon-icons-svelte/lib/ChevronRight.svelte';
     import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
+    import ListChecked from 'carbon-icons-svelte/lib/ListChecked.svelte';
     import OverflowMenuVertical from 'carbon-icons-svelte/lib/OverflowMenuVertical.svelte';
     import TrashCan from 'carbon-icons-svelte/lib/TrashCan.svelte';
     import Undo from 'carbon-icons-svelte/lib/Undo.svelte';
@@ -40,6 +41,10 @@
     import ProjectForm from '@/components/projects/ProjectForm.svelte';
     import type { ProjectNavigation } from '@/components/projects/ProjectRail.svelte';
     import ProjectsShell from '@/components/projects/ProjectsShell.svelte';
+    import SubtaskList from '@/components/tasks/SubtaskList.svelte';
+    import type { SubtaskItem } from '@/components/tasks/SubtaskList.svelte';
+    import SubtaskProgress from '@/components/tasks/SubtaskProgress.svelte';
+    import type { Progress } from '@/components/tasks/SubtaskProgress.svelte';
     import TaskForm from '@/components/tasks/TaskForm.svelte';
     import {
         AlertDialog,
@@ -82,6 +87,8 @@
         storyPoints: number | null;
         dueDate: string | null;
         isOverdue: boolean;
+        progress: Progress | null;
+        subtasks: SubtaskItem[];
     };
 
     let {
@@ -130,6 +137,16 @@
     };
     let deleting = $state<TaskItem | null>(null);
 
+    // The details and the subtask checklist of one Task, in a dialog. The Task comes from
+    // the props by id, so the list updates after each change.
+    let detailId = $state<number | null>(null);
+    let detailOpen = $state(false);
+    const detailTask = $derived(tasks.find((task) => task.id === detailId) ?? null);
+    const openDetail = (task: TaskItem) => {
+        detailId = task.id;
+        detailOpen = true;
+    };
+
     const openTasks = $derived(tasks.filter((task) => task.status !== 'done'));
     const doneTasks = $derived(tasks.filter((task) => task.status === 'done'));
     const openPoints = $derived(
@@ -163,7 +180,17 @@
 <AppHead title={project.name} />
 
 {#snippet taskRow(task: TaskItem)}
-    <li class="group/row border-t border-border transition-colors first:border-t-0 hover:bg-muted/40">
+    <!-- The title button is the keyboard path to the details. -->
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+    <li
+        class="group/row cursor-pointer border-t border-border transition-colors first:border-t-0 hover:bg-muted/40"
+        onclick={(event: MouseEvent) => {
+            // The checkbox, the description, and the menu do their own work.
+            if (!(event.target as HTMLElement).closest('button, a, [role="menu"]')) {
+                openDetail(task);
+            }
+        }}
+    >
             <div class="flex min-h-12 items-center gap-3 py-2 pr-2 pl-4">
                 <button
                     type="button"
@@ -188,15 +215,18 @@
 
                 <div class="flex min-w-0 flex-1 flex-col gap-0.5">
                     <div class="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-                        <span
+                        <button
+                            type="button"
+                            onclick={() => openDetail(task)}
                             class={cn(
-                                'min-w-0 text-sm wrap-break-word',
+                                'min-w-0 rounded-sm text-start text-sm wrap-break-word focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
                                 task.status === 'done' &&
                                     'text-muted-foreground line-through decoration-muted-foreground/60',
                             )}
                         >
                             {task.title}
-                        </span>
+                            <span class="sr-only">, show details</span>
+                        </button>
                         {#if task.status === 'in_progress'}
                             <span
                                 class="w-fit shrink-0 rounded-sm bg-accent px-1.5 py-0.5 text-xs font-medium text-accent-foreground"
@@ -219,6 +249,16 @@
                 </div>
 
                 <div class="flex shrink-0 items-center gap-3 text-xs tabular-nums">
+                    {#if task.progress}
+                        <button
+                            type="button"
+                            onclick={() => openDetail(task)}
+                            class="rounded-sm px-1 py-0.5 hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                            aria-label={`Subtasks of ${task.title}: ${task.progress.done} of ${task.progress.total} done`}
+                        >
+                            <SubtaskProgress progress={task.progress} />
+                        </button>
+                    {/if}
                     {#if task.dueDate}
                         <span
                             class={cn(
@@ -272,6 +312,10 @@
                         <DropdownMenuItem onSelect={() => openTask(task)}>
                             <Edit class="size-4" />
                             Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => openDetail(task)}>
+                            <ListChecked class="size-4" />
+                            Subtasks
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -440,6 +484,61 @@
             />
         {/if}
     {/key}
+</FormDialog>
+
+<FormDialog
+    bind:open={detailOpen}
+    title={detailTask?.title ?? 'Task'}
+    size="lg"
+>
+    {#if detailTask}
+        <dl class="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm">
+            <dt class="text-muted-foreground">Status</dt>
+            <dd>{detailTask.statusLabel}</dd>
+            <dt class="text-muted-foreground">Story points</dt>
+            <dd class="tabular-nums">{detailTask.storyPoints ?? 'None'}</dd>
+            <dt class="text-muted-foreground">Deadline</dt>
+            <dd class={cn('tabular-nums', detailTask.isOverdue && 'font-medium text-destructive')}>
+                {#if detailTask.dueDate}
+                    {formatShortDate(detailTask.dueDate)}{detailTask.isOverdue ? ', overdue' : ''}
+                {:else}
+                    None
+                {/if}
+            </dd>
+        </dl>
+        {#if detailTask.description}
+            <div class="flex flex-col gap-2">
+                <h3 class="text-sm font-medium">Description</h3>
+                <p class="max-h-60 overflow-y-auto text-sm whitespace-pre-line wrap-break-word text-muted-foreground">{detailTask.description}</p>
+            </div>
+        {/if}
+        <SubtaskList
+            {team}
+            taskId={detailTask.id}
+            subtasks={detailTask.subtasks}
+            progress={detailTask.progress}
+            disabled={project.archived}
+        />
+        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onclick={() => (detailOpen = false)}>Close</Button>
+            {#if !project.archived}
+                <Button
+                    variant="outline"
+                    class="gap-1.5"
+                    onclick={() => {
+                        const task = detailTask;
+                        detailOpen = false;
+                        if (task) {
+                            openTask(task);
+                        }
+                    }}
+                >
+                    <Edit class="size-4" />
+                    Edit task
+                </Button>
+            {/if}
+        </div>
+    {/if}
 </FormDialog>
 
 <FormDialog bind:open={projectDialogOpen} title="Edit project">
