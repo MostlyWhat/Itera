@@ -5,6 +5,7 @@ namespace App\Queries;
 use App\Enums\TaskStatus;
 use App\Models\Sprint;
 use App\Models\SprintCommitment;
+use App\Models\Subtask;
 use App\Models\Task;
 use App\Models\Team;
 
@@ -23,7 +24,7 @@ class CurrentSprintBoard
         $sprint = $team->sprints()
             ->whereDate('week_start', '<=', today())
             ->whereDate('week_end', '>=', today())
-            ->with('commitments.task.project.area')
+            ->with(['commitments.task.project.area', 'commitments.task.subtasks'])
             ->first();
 
         if ($sprint === null) {
@@ -46,6 +47,12 @@ class CurrentSprintBoard
                     'projectId' => $task->project->id,
                     'projectName' => $task->project->name,
                     'areaName' => $task->project->area->name,
+                    'progress' => $task->subtaskProgress(),
+                    'subtasks' => $task->subtasks->map(fn (Subtask $subtask) => [
+                        'id' => $subtask->id,
+                        'title' => $subtask->title,
+                        'completed' => $subtask->completed,
+                    ])->values()->all(),
                 ])
                 ->values()
                 ->all(),

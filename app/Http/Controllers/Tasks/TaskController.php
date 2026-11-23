@@ -7,6 +7,7 @@ use App\Enums\TaskStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tasks\SaveTaskRequest;
 use App\Models\Project;
+use App\Models\Subtask;
 use App\Models\Task;
 use App\Queries\ProjectNavigation;
 use Illuminate\Http\RedirectResponse;
@@ -45,7 +46,7 @@ class TaskController extends Controller
     {
         Gate::authorize('view', $project);
 
-        $tasks = $project->tasks()->inListOrder()->get();
+        $tasks = $project->tasks()->inListOrder()->with('subtasks')->get();
 
         return Inertia::render('projects/Show', [
             'navigation' => $navigation->for($project->area->team),
@@ -65,6 +66,12 @@ class TaskController extends Controller
                 'storyPoints' => $task->story_points?->value,
                 'dueDate' => $task->due_date?->toDateString(),
                 'isOverdue' => $task->isOverdue(),
+                'progress' => $task->subtaskProgress(),
+                'subtasks' => $task->subtasks->map(fn (Subtask $subtask) => [
+                    'id' => $subtask->id,
+                    'title' => $subtask->title,
+                    'completed' => $subtask->completed,
+                ])->values()->all(),
             ]),
             'storyPointOptions' => StoryPoints::values(),
             'statusOptions' => collect(TaskStatus::cases())->map(fn (TaskStatus $status) => [
