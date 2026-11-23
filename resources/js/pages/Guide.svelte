@@ -22,7 +22,7 @@
         SelectTrigger,
     } from '@/components/ui/select';
     import { cn } from '@/lib/utils';
-    import { archive, dashboard } from '@/routes';
+    import { archive, dashboard, priority } from '@/routes';
     import { edit as editPlanning } from '@/routes/planning';
     import { index as projectsIndex } from '@/routes/projects';
     import { index as sprintsIndex } from '@/routes/sprints';
@@ -256,6 +256,10 @@
         </li>
         <li>Hide the areas you do not use this term. Their projects stay, and you can show them again.</li>
         <li>Use the plus button next to an area to add a project to it.</li>
+        <li>
+            Open <Link href={priority(team)} class={link}>Priority</Link> to rank your areas and projects.
+            The sprint backlog and the board show tasks in that order.
+        </li>
         <li>Use the menu next to an area to rename or archive it.</li>
         <li>Edit or archive a project from the menu on the project page.</li>
     </ul>
