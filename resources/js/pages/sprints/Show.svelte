@@ -37,6 +37,8 @@
     import InputError from '@/components/InputError.svelte';
     import PointsMeter from '@/components/sprints/PointsMeter.svelte';
     import { Button } from '@/components/ui/button';
+    import TaskDetailsDialog from '@/components/tasks/TaskDetailsDialog.svelte';
+    import type { TaskDetails } from '@/components/tasks/TaskDetailsDialog.svelte';
     import { Input } from '@/components/ui/input';
     import {
         Select,
@@ -61,6 +63,7 @@
         projectName: string;
         areaName: string;
         takenBy: string | null;
+        details: TaskDetails;
     };
 
     type Commitment = {
@@ -70,6 +73,7 @@
         points: number | null;
         projectName: string | null;
         status: string | null;
+        details: TaskDetails | null;
     };
 
     let {
@@ -107,6 +111,30 @@
     let editingGoal = $state(false);
     let addingTask = $state(false);
     let filter = $state('');
+
+    // A click on a task opens its details and subtasks. The details come
+    // from the props by id, so they update after each change.
+    let detailId = $state<number | null>(null);
+    let detailOpen = $state(false);
+    const detail = $derived(
+        [...commitments.map((commitment) => commitment.details), ...candidates.map((task) => task.details)].find(
+            (details) => details !== null && details.taskId === detailId,
+        ) ?? null,
+    );
+    const openDetail = (taskId: number | null) => {
+        if (taskId === null) {
+            return;
+        }
+
+        detailId = taskId;
+        detailOpen = true;
+    };
+    // A click on the row opens the details. Its buttons do their own work.
+    const rowClick = (event: MouseEvent, taskId: number | null) => {
+        if (!(event.target as HTMLElement).closest('button, a')) {
+            openDetail(taskId);
+        }
+    };
 
     const committedIds = $derived(
         commitments
@@ -255,16 +283,31 @@
                     <ul class="overflow-hidden rounded-lg border border-border bg-card">
                         {#each commitments as commitment (commitment.id)}
                             {@const done = commitment.status === 'done'}
+                            <!-- The title button is the keyboard path to the details. -->
+                            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
                             <li
-                                class="flex min-h-12 items-center gap-3 border-t border-border py-2 pr-2 pl-4 first:border-t-0"
+                                class={cn(
+                                    'flex min-h-12 items-center gap-3 border-t border-border py-2 pr-2 pl-4 transition-colors first:border-t-0',
+                                    commitment.details && 'cursor-pointer hover:bg-muted/40',
+                                )}
+                                onclick={(event: MouseEvent) => rowClick(event, commitment.taskId)}
                             >
                                 <span class="flex min-w-0 flex-1 flex-col">
-                                    <span
+                                    {#if commitment.details}
+                                    <button
+                                        type="button"
+                                        onclick={() => openDetail(commitment.taskId)}
                                         class={cn(
-                                            'text-sm wrap-break-word',
+                                            'w-fit rounded-sm text-start text-sm wrap-break-word focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
                                             done && 'text-muted-foreground line-through decoration-muted-foreground/60',
-                                        )}>{commitment.title}</span
+                                        )}
                                     >
+                                        {commitment.title}
+                                        <span class="sr-only">, show details</span>
+                                    </button>
+                                    {:else}
+                                        <span class="text-sm wrap-break-word">{commitment.title}</span>
+                                    {/if}
                                     <span class="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                                         {#if commitment.projectName}
                                             <span class="wrap-break-word">{commitment.projectName}</span>
@@ -354,14 +397,27 @@
                     <ul class="overflow-hidden rounded-lg border border-border bg-card">
                         {#each filtered as task (task.id)}
                             {@const taken = task.takenBy !== null}
+                            <!-- The title button is the keyboard path to the details. -->
+                            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
                             <li
                                 class={cn(
-                                    'flex min-h-12 items-center gap-3 border-t border-border py-2 pr-2 pl-4 first:border-t-0',
+                                    'flex min-h-12 cursor-pointer items-center gap-3 border-t border-border py-2 pr-2 pl-4 transition-colors first:border-t-0 hover:bg-muted/40',
                                     taken && 'opacity-60',
                                 )}
+                                onclick={(event: MouseEvent) => rowClick(event, task.id)}
                             >
                                 <span class="flex min-w-0 flex-1 flex-col">
-                                    <span class="text-sm wrap-break-word">{task.title}</span>
+                                    <button
+                                        type="button"
+                                        onclick={() => openDetail(task.id)}
+                                        class={cn(
+                                            'w-fit rounded-sm text-start text-sm wrap-break-word focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
+                                            ''
+                                        )}
+                                    >
+                                        {task.title}
+                                        <span class="sr-only">, show details</span>
+                                    </button>
                                     <span
                                         class="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground tabular-nums"
                                     >
@@ -417,10 +473,27 @@
             </div>
             <ul class="overflow-hidden rounded-lg border border-border bg-card">
                 {#each commitments as commitment (commitment.id)}
+                    <!-- The title button is the keyboard path to the details. -->
+                    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
                     <li
-                        class="flex min-h-11 items-center justify-between gap-3 border-t border-border px-4 py-2 text-sm first:border-t-0"
+                        class={cn(
+                            'flex min-h-11 items-center justify-between gap-3 border-t border-border px-4 py-2 text-sm transition-colors first:border-t-0',
+                            commitment.details && 'cursor-pointer hover:bg-muted/40',
+                        )}
+                        onclick={(event: MouseEvent) => rowClick(event, commitment.taskId)}
                     >
-                        <span class="min-w-0 wrap-break-word">{commitment.title}</span>
+                        {#if commitment.details}
+                            <button
+                                type="button"
+                                onclick={() => openDetail(commitment.taskId)}
+                                class="min-w-0 rounded-sm text-start wrap-break-word focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                            >
+                                {commitment.title}
+                                <span class="sr-only">, show details</span>
+                            </button>
+                        {:else}
+                            <span class="min-w-0 wrap-break-word">{commitment.title}</span>
+                        {/if}
                         <span class="shrink-0 text-xs text-muted-foreground tabular-nums"
                             >{pointsLabel(commitment.points)}</span
                         >
@@ -569,3 +642,5 @@
         {/if}
     </FormDialog>
 {/if}
+
+<TaskDetailsDialog bind:open={detailOpen} {team} task={detail} />

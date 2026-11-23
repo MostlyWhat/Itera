@@ -12,6 +12,7 @@ use App\Http\Requests\Sprints\UpdateSprintRequest;
 use App\Models\Project;
 use App\Models\Sprint;
 use App\Models\SprintCommitment;
+use App\Models\Subtask;
 use App\Models\Task;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -69,7 +70,7 @@ class SprintController extends Controller
     {
         Gate::authorize('view', $sprint);
 
-        $sprint->load('commitments.task.project.area');
+        $sprint->load(['commitments.task.project.area', 'commitments.task.subtasks']);
 
         return Inertia::render('sprints/Show', [
             'sprint' => [
@@ -83,6 +84,7 @@ class SprintController extends Controller
                 'points' => $commitment->committed_points,
                 'projectName' => $commitment->task?->project->name,
                 'status' => $commitment->task?->status->value,
+                'details' => $commitment->task === null ? null : $this->details($commitment->task),
             ]),
             'candidates' => $sprint->isEditable() ? $this->candidates($sprint) : [],
             'projects' => $sprint->isEditable() ? $this->projects($sprint) : [],
@@ -137,6 +139,34 @@ class SprintController extends Controller
     }
 
     /**
+     * The details of a Task for its dialog: the description, the deadline,
+     * and the Subtasks with their progress.
+     *
+     * @return array<string, mixed>
+     */
+    private function details(Task $task): array
+    {
+        return [
+            'taskId' => $task->id,
+            'title' => $task->title,
+            'description' => $task->description,
+            'statusLabel' => $task->status->label(),
+            'points' => $task->story_points?->value,
+            'dueDate' => $task->due_date?->toDateString(),
+            'isOverdue' => $task->isOverdue(),
+            'projectId' => $task->project->id,
+            'projectName' => $task->project->name,
+            'areaName' => $task->project->area->name,
+            'progress' => $task->subtaskProgress(),
+            'subtasks' => $task->subtasks->map(fn (Subtask $subtask) => [
+                'id' => $subtask->id,
+                'title' => $subtask->title,
+                'completed' => $subtask->completed,
+            ])->values()->all(),
+        ];
+    }
+
+    /**
      * The fields that the list and the plan both show.
      *
      * @return array<string, mixed>
@@ -179,7 +209,7 @@ class SprintController extends Controller
             ->where('status', '!=', TaskStatus::Done->value)
             ->whereHas('project', fn ($projects) => $projects->active()
                 ->whereHas('area', fn ($areas) => $areas->active()->where('team_id', $sprint->team_id)))
-            ->with('project.area')
+            ->with(['project.area', 'subtasks'])
             ->inListOrder()
             ->get()
             ->map(fn (Task $task) => [
@@ -191,6 +221,7 @@ class SprintController extends Controller
                 'projectName' => $task->project->name,
                 'areaName' => $task->project->area->name,
                 'takenBy' => $taken->get($task->id)?->sprint->week_start->toDateString(),
+                'details' => $this->details($task),
             ])
             ->values()
             ->all();

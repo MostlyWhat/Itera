@@ -170,3 +170,24 @@ test('users cannot see or change the subtasks of another user', function () {
     expect($otherSubtask->fresh())->title->toBe('Private')->completed->toBeFalse()
         ->and($otherTask->subtasks()->count())->toBe(1);
 });
+
+test('the sprint page gives the details and subtasks of each task', function () {
+    Carbon::setTestNow('2026-11-18 10:00');
+    [$user, $task, $slug] = userWithSubtaskParent();
+    $backlogTask = Task::factory()->for($task->project)->create(['title' => 'Read chapter 7']);
+    $sprint = Sprint::factory()->for($user->currentTeam)->create(['week_start' => '2026-11-16']);
+    SprintCommitment::factory()->for($sprint)->create(['task_id' => $task->id, 'task_title' => $task->title]);
+    Subtask::factory()->for($task)->completed()->create(['title' => 'Find sources']);
+    Subtask::factory()->for($task)->create(['title' => 'Write the outline']);
+
+    $this->actingAs($user)
+        ->get(route('sprints.show', [$slug, $sprint]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('commitments.0.details.taskId', $task->id)
+            ->where('commitments.0.details.progress', ['done' => 1, 'total' => 2, 'percent' => 50])
+            ->where('commitments.0.details.subtasks.0.title', 'Find sources')
+            ->where('candidates', fn ($candidates) => collect($candidates)
+                ->contains(fn ($candidate) => $candidate['id'] === $backlogTask->id
+                    && $candidate['details']['progress'] === null
+                    && $candidate['details']['subtasks'] === [])));
+});
