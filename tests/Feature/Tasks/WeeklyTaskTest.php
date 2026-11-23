@@ -85,6 +85,18 @@ test('the database refuses a second task for the same week', function () {
     expect(fn () => $copy->save())->toThrow(UniqueConstraintViolationException::class);
 });
 
+test('a deleted weekly task does not come back', function () {
+    [$user, $project, $slug] = userWithWeeklyProject();
+    $template = RecurrenceTemplate::factory()->for($project)->create(['weekday' => 5]);
+    app(CreateWeeklyTasks::class)->forTemplate($template);
+    $thisWeek = $template->tasks()->orderBy('recurrence_date')->first();
+
+    $this->actingAs($user)->delete(route('tasks.destroy', [$slug, $thisWeek]));
+    $this->actingAs($user)->get(route('projects.show', [$slug, $project]))->assertOk();
+
+    expect($template->tasks()->pluck('recurrence_date')->map->toDateString()->all())->toBe(['2026-11-27']);
+});
+
 test('a new week makes its task when the user opens a page', function () {
     [$user, $project, $slug] = userWithWeeklyProject();
     $template = RecurrenceTemplate::factory()->for($project)->create(['weekday' => 5]);
@@ -115,18 +127,75 @@ test('each weekly task keeps its own status', function () {
     expect($template->tasks()->count())->toBe(2);
 });
 
-test('the project page lists weekly tasks and marks their tasks', function () {
+test('the project page marks weekly tasks with their day', function () {
     [$user, $project, $slug] = userWithWeeklyProject();
     $template = RecurrenceTemplate::factory()->for($project)->create(['title' => 'Do the weekly quiz', 'weekday' => 5]);
+    app(CreateWeeklyTasks::class)->forTemplate($template);
     Task::factory()->for($project)->create(['title' => 'One-off task']);
 
     $this->actingAs($user)
         ->get(route('projects.show', [$slug, $project]))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('weekly.0.id', $template->id)
-            ->where('weekly.0.weekdayName', 'Friday')
-            ->where('tasks', fn ($tasks) => collect($tasks)->firstWhere('title', 'One-off task')['isWeekly'] === false
-                && collect($tasks)->where('title', 'Do the weekly quiz')->every(fn ($task) => $task['isWeekly'] === true)));
+            ->missing('weekly')
+            ->where('tasks', function ($tasks) use ($template) {
+                $oneOff = collect($tasks)->firstWhere('title', 'One-off task');
+                $weekly = collect($tasks)->where('title', 'Do the weekly quiz');
+
+                return $oneOff['isWeekly'] === false && $oneOff['repeatsOn'] === null
+                    && $weekly->count() === 2
+                    && $weekly->every(fn ($task) => $task['isWeekly'] && $task['repeatsOn'] === 'Friday' && $task['weeklyId'] === $template->id);
+            }));
+});
+
+test('editing a weekly task changes the later open weeks too', function () {
+    [$user, $project, $slug] = userWithWeeklyProject();
+    $template = RecurrenceTemplate::factory()->for($project)->create(['title' => 'Quiz', 'weekday' => 5]);
+    app(CreateWeeklyTasks::class)->forTemplate($template);
+    [$thisWeek, $nextWeek] = $template->tasks()->orderBy('recurrence_date')->get()->all();
+
+    $this->actingAs($user)
+        ->patch(route('tasks.update', [$slug, $thisWeek]), ['title' => 'Weekly quiz', 'story_points' => 3, 'due_date' => '2026-11-20'])
+        ->assertSessionHasNoErrors();
+
+    expect($thisWeek->fresh()->title)->toBe('Weekly quiz')
+        ->and($nextWeek->fresh())->title->toBe('Weekly quiz')->story_points->toBe(StoryPoints::Three)
+        ->and($nextWeek->fresh()->due_date->toDateString())->toBe('2026-11-27')
+        ->and($template->fresh()->title)->toBe('Weekly quiz');
+
+    // A new week uses the new title.
+    Carbon::setTestNow('2026-11-25 09:00');
+    app(CreateWeeklyTasks::class)->forTemplate($template->fresh());
+    expect($template->tasks()->whereDate('recurrence_date', '2026-12-04')->value('title'))->toBe('Weekly quiz');
+});
+
+test('editing an earlier week leaves a later week that is done', function () {
+    [$user, $project, $slug] = userWithWeeklyProject();
+    $template = RecurrenceTemplate::factory()->for($project)->create(['title' => 'Quiz', 'weekday' => 5]);
+    app(CreateWeeklyTasks::class)->forTemplate($template);
+    [$thisWeek, $nextWeek] = $template->tasks()->orderBy('recurrence_date')->get()->all();
+    $nextWeek->update(['status' => TaskStatus::Done]);
+
+    $this->actingAs($user)->patch(route('tasks.update', [$slug, $thisWeek]), ['title' => 'Weekly quiz']);
+
+    expect($nextWeek->fresh()->title)->toBe('Quiz');
+});
+
+test('a one-off task can start to repeat from the edit panel', function () {
+    [$user, $project, $slug] = userWithWeeklyProject();
+    $task = Task::factory()->for($project)->create(['title' => 'Read chapter', 'due_date' => '2026-11-19']);
+
+    $this->actingAs($user)
+        ->patch(route('tasks.update', [$slug, $task]), ['title' => 'Read a chapter', 'repeat_weekday' => 5])
+        ->assertSessionHasNoErrors();
+
+    $template = RecurrenceTemplate::sole();
+    $task->refresh();
+
+    expect($template)->weekday->toBe(5)->title->toBe('Read a chapter')
+        ->and($task->recurrence_template_id)->toBe($template->id)
+        ->and($task->due_date->toDateString())->toBe('2026-11-20')
+        ->and($template->tasks()->orderBy('recurrence_date')->pluck('recurrence_date')->map->toDateString()->all())
+        ->toBe(['2026-11-20', '2026-11-27']);
 });
 
 test('stopping a weekly task keeps its past tasks', function () {

@@ -73,7 +73,7 @@ class SprintController extends Controller
     {
         Gate::authorize('view', $sprint);
 
-        $sprint->load(['commitments.task.project.area', 'commitments.task.subtasks']);
+        $sprint->load(['commitments.task.project.area', 'commitments.task.subtasks', 'commitments.task.recurrenceTemplate']);
 
         return Inertia::render('sprints/Show', [
             'sprint' => [
@@ -158,6 +158,7 @@ class SprintController extends Controller
             'points' => $task->story_points?->value,
             'dueDate' => $task->due_date?->toDateString(),
             'isOverdue' => $task->isOverdue(),
+            'repeatsOn' => $task->recurrenceTemplate?->weekdayName(),
             'projectId' => $task->project->id,
             'projectName' => $task->project->name,
             'areaName' => $task->project->area->name,
@@ -215,7 +216,7 @@ class SprintController extends Controller
             ->where('tasks.status', '!=', TaskStatus::Done->value)
             ->whereHas('project', fn ($projects) => $projects->active()
                 ->whereHas('area', fn ($areas) => $areas->active()->where('team_id', $sprint->team_id))))
-            ->with(['project.area', 'subtasks'])
+            ->with(['project.area', 'subtasks', 'recurrenceTemplate'])
             ->get()
             ->map(fn (Task $task) => [
                 'id' => $task->id,

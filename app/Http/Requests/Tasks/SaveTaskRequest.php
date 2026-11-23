@@ -28,7 +28,7 @@ class SaveTaskRequest extends FormRequest
             'story_points' => ['nullable', 'integer', Rule::enum(StoryPoints::class)],
             'due_date' => ['nullable', 'date_format:Y-m-d'],
             'status' => ['sometimes', 'required', Rule::enum(TaskStatus::class)],
-            // A new Task can repeat each week on one weekday (ITERA-09).
+            // A Task can repeat each week on one weekday (ITERA-09).
             'repeat_weekday' => ['nullable', 'integer', 'between:0,6'],
         ];
     }

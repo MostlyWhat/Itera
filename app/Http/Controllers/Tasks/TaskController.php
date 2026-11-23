@@ -12,8 +12,11 @@ use App\Models\RecurrenceTemplate;
 use App\Models\Subtask;
 use App\Models\Task;
 use App\Queries\ProjectNavigation;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -48,7 +51,7 @@ class TaskController extends Controller
     {
         Gate::authorize('view', $project);
 
-        $tasks = $project->tasks()->inListOrder()->with('subtasks')->get();
+        $tasks = $project->tasks()->inListOrder()->with(['subtasks', 'recurrenceTemplate'])->get();
 
         return Inertia::render('projects/Show', [
             'navigation' => $navigation->for($project->area->team),
@@ -69,19 +72,14 @@ class TaskController extends Controller
                 'dueDate' => $task->due_date?->toDateString(),
                 'isOverdue' => $task->isOverdue(),
                 'isWeekly' => $task->recurrence_template_id !== null,
+                'weeklyId' => $task->recurrence_template_id,
+                'repeatsOn' => $task->recurrenceTemplate?->weekdayName(),
                 'progress' => $task->subtaskProgress(),
                 'subtasks' => $task->subtasks->map(fn (Subtask $subtask) => [
                     'id' => $subtask->id,
                     'title' => $subtask->title,
                     'completed' => $subtask->completed,
                 ])->values()->all(),
-            ]),
-            'weekly' => $project->recurrenceTemplates()->get()->map(fn (RecurrenceTemplate $template) => [
-                'id' => $template->id,
-                'title' => $template->title,
-                'weekday' => $template->weekday,
-                'weekdayName' => $template->weekdayName(),
-                'storyPoints' => $template->story_points?->value,
             ]),
             'storyPointOptions' => StoryPoints::values(),
             'statusOptions' => collect(TaskStatus::cases())->map(fn (TaskStatus $status) => [
@@ -129,12 +127,65 @@ class TaskController extends Controller
 
     /**
      * Edit a Task: title, description, story points, deadline, or status.
+     *
+     * A weekly Task also passes its title, description, and story points to
+     * its template and to the open Tasks of later weeks. A one-off Task with
+     * a repeat day becomes weekly: it moves to the next date on that day.
      */
-    public function update(SaveTaskRequest $request, Task $task): RedirectResponse
+    public function update(SaveTaskRequest $request, Task $task, CreateWeeklyTasks $weekly): RedirectResponse
     {
         Gate::authorize('update', $task);
 
-        $task->update($request->safe()->except('repeat_weekday'));
+        $fields = $request->safe()->except('repeat_weekday');
+        $template = $task->recurrenceTemplate;
+        $weekday = $request->validated('repeat_weekday');
+
+        if ($template !== null) {
+            DB::transaction(function () use ($task, $template, $fields): void {
+                $task->update($fields);
+
+                $shared = Arr::only($fields, ['title', 'description', 'story_points']);
+                $template->update($shared);
+                $template->tasks()
+                    ->where('status', TaskStatus::Todo)
+                    ->whereDate('recurrence_date', '>', $task->recurrence_date?->toDateString())
+                    ->get()
+                    ->each(fn (Task $later) => $later->update($shared));
+            });
+
+            Inertia::flash('toast', ['type' => 'success', 'message' => __('Task saved. Later weeks use the same details.')]);
+
+            return back();
+        }
+
+        if ($weekday !== null) {
+            $template = DB::transaction(function () use ($task, $fields, $weekday): RecurrenceTemplate {
+                $task->fill($fields);
+
+                $template = $task->project->recurrenceTemplates()->create([
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'story_points' => $task->story_points,
+                    'weekday' => (int) $weekday,
+                ]);
+
+                $today = CarbonImmutable::today();
+                $date = $today->addDays(((int) $weekday - $today->dayOfWeek + 7) % 7);
+                $task->recurrence_template_id = $template->id;
+                $task->recurrence_date = $date;
+                $task->due_date = $date;
+                $task->save();
+
+                return $template;
+            });
+            $weekly->forTemplate($template);
+
+            Inertia::flash('toast', ['type' => 'success', 'message' => __('Task saved. It repeats every :day.', ['day' => $template->weekdayName()])]);
+
+            return back();
+        }
+
+        $task->update($fields);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Task saved.')]);
 
