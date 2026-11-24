@@ -29,6 +29,7 @@
     import CheckmarkFilled from 'carbon-icons-svelte/lib/CheckmarkFilled.svelte';
     import Close from 'carbon-icons-svelte/lib/Close.svelte';
     import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
+    import Result from 'carbon-icons-svelte/lib/Result.svelte';
     import Search from 'carbon-icons-svelte/lib/Search.svelte';
     import Undo from 'carbon-icons-svelte/lib/Undo.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
@@ -36,7 +37,7 @@
     import FormDialog from '@/components/FormDialog.svelte';
     import InputError from '@/components/InputError.svelte';
     import PointsMeter from '@/components/sprints/PointsMeter.svelte';
-    import { Button } from '@/components/ui/button';
+    import { Button, buttonVariants } from '@/components/ui/button';
     import TaskDetailsDialog from '@/components/tasks/TaskDetailsDialog.svelte';
     import type { TaskDetails } from '@/components/tasks/TaskDetailsDialog.svelte';
     import { Input } from '@/components/ui/input';
@@ -51,7 +52,7 @@
     import { formatWeekRange, weekName } from '@/lib/dates';
     import { cn } from '@/lib/utils';
     import { priority } from '@/routes';
-    import { update } from '@/routes/sprints';
+    import { review as reviewSprint, update } from '@/routes/sprints';
     import { store as storeSprintTask } from '@/routes/sprints/tasks';
     import { update as updateStatus } from '@/routes/tasks/status';
 
@@ -74,6 +75,8 @@
         points: number | null;
         projectName: string | null;
         status: string | null;
+        closingStatus: 'done' | 'carried_over' | 'dropped' | null;
+        closingLabel: string | null;
         details: TaskDetails | null;
     };
 
@@ -84,6 +87,7 @@
         projects,
         storyPointOptions,
         sortingLabel,
+        retrospective,
     }: {
         sprint: {
             id: number;
@@ -95,13 +99,28 @@
             taskCount: number;
             timing: 'current' | 'upcoming' | 'past';
             editable: boolean;
+            completedPoints: number | null;
+            reviewed: boolean;
+            needsReview: boolean;
         };
         commitments: Commitment[];
         candidates: Candidate[];
         projects: { id: number; name: string; areaName: string }[];
         storyPointOptions: number[];
         sortingLabel: string;
+        retrospective: { went_well: string | null; blockers: string | null; improve_next: string | null } | null;
     } = $props();
+
+    // The answers of the sprint review, in the order of the review form.
+    const answers = $derived(
+        retrospective === null
+            ? []
+            : [
+                  { label: 'What went well', text: retrospective.went_well },
+                  { label: 'What got in the way', text: retrospective.blockers },
+                  { label: 'What to change next sprint', text: retrospective.improve_next },
+              ].filter((answer) => answer.text !== null),
+    );
 
     const team = $derived((page.props.currentTeam as Team).slug);
     const errors = $derived(
@@ -225,7 +244,7 @@
                 <h1 class="type-title">{weekName(sprint.weekStart)}</h1>
                 {#if sprint.timing === 'past'}
                     <span class="rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
-                        >{timingLabel}</span
+                        >{sprint.reviewed ? 'Reviewed' : timingLabel}</span
                     >
                 {/if}
             </div>
@@ -250,12 +269,45 @@
                 {sprint.taskCount === 1 ? 'task' : 'tasks'}
             </p>
         </div>
-        <PointsMeter
-            class="w-full sm:w-72"
-            committed={sprint.committedPoints}
-            target={sprint.targetPoints}
-        />
+        <div class="flex w-full flex-wrap items-center gap-4 sm:w-auto sm:flex-nowrap">
+            {#if sprint.reviewed && sprint.completedPoints !== null}
+                <p class="text-sm tabular-nums">
+                    <span class="text-base font-semibold">{sprint.completedPoints}</span>
+                    <span class="text-muted-foreground">of {sprint.committedPoints} points completed</span>
+                </p>
+            {:else}
+                <PointsMeter
+                    class="w-full sm:w-64"
+                    committed={sprint.committedPoints}
+                    target={sprint.targetPoints}
+                />
+            {/if}
+            <!-- The review lives at the top: start it after the week ends, or edit it later. -->
+            {#if sprint.needsReview}
+                <Link
+                    href={reviewSprint({ current_team: team, sprint: sprint.id })}
+                    class={cn(buttonVariants(), 'shrink-0')}
+                >
+                    <Result class="size-4" />
+                    Review sprint
+                </Link>
+            {:else if sprint.reviewed}
+                <Link
+                    href={reviewSprint({ current_team: team, sprint: sprint.id })}
+                    class={cn(buttonVariants({ variant: 'outline' }), 'shrink-0')}
+                >
+                    <Edit class="size-4" />
+                    Edit review
+                </Link>
+            {/if}
+        </div>
     </header>
+
+    {#if sprint.needsReview}
+        <p class="-mt-2 text-sm text-pretty text-muted-foreground">
+            This week has ended. Review it to save the results, plan the unfinished tasks, and set the next target.
+        </p>
+    {/if}
 
     {#if sprint.editable}
 
@@ -472,12 +524,7 @@
         </div>
     {:else}
         <section aria-labelledby="plan-title" class="flex flex-col gap-3">
-            <div class="space-y-1">
-                <h2 id="plan-title" class="type-section">Plan</h2>
-                <p class="text-sm text-muted-foreground">
-                    {sprint.goal ?? 'No goal'}
-                </p>
-            </div>
+            <h2 id="plan-title" class="type-section">{sprint.reviewed ? 'Results' : 'Plan'}</h2>
             <ul class="overflow-hidden rounded-lg border border-border bg-card">
                 {#each commitments as commitment (commitment.id)}
                     <!-- The title button is the keyboard path to the details. -->
@@ -501,9 +548,19 @@
                         {:else}
                             <span class="min-w-0 wrap-break-word">{commitment.title}</span>
                         {/if}
-                        <span class="shrink-0 text-xs text-muted-foreground tabular-nums"
-                            >{pointsLabel(commitment.points)}</span
-                        >
+                        <span class="flex shrink-0 items-center gap-3 text-xs text-muted-foreground tabular-nums">
+                            {#if commitment.closingLabel}
+                                <span
+                                    class={cn(
+                                        'rounded-sm px-1.5 py-0.5 font-medium',
+                                        commitment.closingStatus === 'done'
+                                            ? 'bg-primary/10 text-primary'
+                                            : 'bg-muted text-muted-foreground',
+                                    )}>{commitment.closingLabel}</span
+                                >
+                            {/if}
+                            {pointsLabel(commitment.points)}
+                        </span>
                     </li>
                 {:else}
                     <li class="px-4 py-6 text-sm text-muted-foreground">
@@ -512,6 +569,24 @@
                 {/each}
             </ul>
         </section>
+
+        {#if sprint.reviewed}
+            <section aria-labelledby="retro-title" class="flex flex-col gap-3">
+                <h2 id="retro-title" class="type-section">Retrospective</h2>
+                {#if answers.length > 0}
+                    <dl class="flex flex-col gap-4 rounded-lg border border-border bg-card px-4 py-4">
+                        {#each answers as answer (answer.label)}
+                            <div class="flex flex-col gap-1">
+                                <dt class="text-xs font-medium text-muted-foreground">{answer.label}</dt>
+                                <dd class="text-sm whitespace-pre-line wrap-break-word">{answer.text}</dd>
+                            </div>
+                        {/each}
+                    </dl>
+                {:else}
+                    <p class="text-sm text-muted-foreground">No notes for this sprint.</p>
+                {/if}
+            </section>
+        {/if}
     {/if}
 </div>
 

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * One week of planned work for a team (seven days from `week_start`), with a goal, a
@@ -30,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $updated_at
  * @property-read Team $team
  * @property-read Collection<int, SprintCommitment> $commitments
+ * @property-read Retrospective|null $retrospective
  */
 #[Fillable(['week_start', 'goal', 'target_points'])]
 class Sprint extends Model
@@ -75,6 +77,36 @@ class Sprint extends Model
     public function commitments(): HasMany
     {
         return $this->hasMany(SprintCommitment::class);
+    }
+
+    /**
+     * Get the notes of the Sprint review.
+     *
+     * @return HasOne<Retrospective, $this>
+     */
+    public function retrospective(): HasOne
+    {
+        return $this->hasOne(Retrospective::class);
+    }
+
+    /**
+     * Determine if the Sprint waits for its review: its week has ended and
+     * no review has completed it (ITERA-10).
+     */
+    public function needsReview(): bool
+    {
+        return $this->status === SprintStatus::Open && $this->isPast();
+    }
+
+    /**
+     * Scope the query to Sprints that wait for their review.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeAwaitingReview(Builder $query): void
+    {
+        $query->where('status', SprintStatus::Open->value)
+            ->whereDate('week_end', '<', today());
     }
 
     /**
