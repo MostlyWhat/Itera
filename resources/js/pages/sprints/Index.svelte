@@ -20,6 +20,7 @@
     import FormDialog from '@/components/FormDialog.svelte';
     import InputError from '@/components/InputError.svelte';
     import PointsMeter from '@/components/sprints/PointsMeter.svelte';
+    import ReviewReminder from '@/components/sprints/ReviewReminder.svelte';
     import { Button } from '@/components/ui/button';
     import { Input } from '@/components/ui/input';
     import {
@@ -41,6 +42,9 @@
         committedPoints: number;
         taskCount: number;
         timing: 'current' | 'upcoming' | 'past';
+        completedPoints: number | null;
+        reviewed: boolean;
+        needsReview: boolean;
     };
 
     let {
@@ -75,6 +79,12 @@
     // The plan form opens in a dialog. The list of sprints is the page.
     const hasCurrent = $derived(sprints.some((sprint) => sprint.timing === 'current'));
     let planning = $state(false);
+
+    // The oldest sprint that waits for its review gets a reminder. It does
+    // not stop the user from planning the next sprint (ITERA-10).
+    const waiting = $derived(
+        sprints.filter((sprint) => sprint.needsReview).sort((a, b) => a.weekStart.localeCompare(b.weekStart)),
+    );
 </script>
 
 <AppHead title="Sprints" />
@@ -89,6 +99,10 @@
             </Button>
         {/if}
     </header>
+
+    {#if waiting.length > 0}
+        <ReviewReminder {team} sprint={{ ...waiting[0], waiting: waiting.length }} />
+    {/if}
 
     {#if !hasCurrent && freeWeeks.length > 0}
         <div
@@ -223,10 +237,22 @@
                                     {sprint.taskCount === 1 ? 'task' : 'tasks'}</span
                                 >
                             </span>
-                            <PointsMeter
-                                committed={sprint.committedPoints}
-                                target={sprint.targetPoints}
-                            />
+                            {#if sprint.reviewed && sprint.completedPoints !== null}
+                                <span class="text-sm tabular-nums">
+                                    <span class="font-semibold">{sprint.completedPoints}</span>
+                                    <span class="text-muted-foreground">of {sprint.committedPoints} points done</span>
+                                </span>
+                            {:else if sprint.needsReview}
+                                <span class="flex items-center gap-2 text-sm">
+                                    <span class="rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">Needs review</span>
+                                    <span class="text-muted-foreground tabular-nums">{sprint.committedPoints} points</span>
+                                </span>
+                            {:else}
+                                <PointsMeter
+                                    committed={sprint.committedPoints}
+                                    target={sprint.targetPoints}
+                                />
+                            {/if}
                             <ChevronRight
                                 class="hidden size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 sm:block"
                             />

@@ -27,6 +27,7 @@
     import Edit from 'carbon-icons-svelte/lib/Edit.svelte';
     import WarningAltFilled from 'carbon-icons-svelte/lib/WarningAltFilled.svelte';
     import AppHead from '@/components/AppHead.svelte';
+    import ReviewReminder from '@/components/sprints/ReviewReminder.svelte';
     import Repeat from 'carbon-icons-svelte/lib/Repeat.svelte';
     import FormDialog from '@/components/FormDialog.svelte';
     import SubtaskList from '@/components/tasks/SubtaskList.svelte';
@@ -78,10 +79,12 @@
         pendingInvitations = [],
         board = null,
         setup = null,
+        review = null,
     }: {
         pendingInvitations?: DashboardInvitation[];
         board?: Board | null;
         setup?: { hasProject: boolean; hasTask: boolean } | null;
+        review?: { id: number; weekStart: string; weekEnd: string; waiting: number } | null;
     } = $props();
 
     const team = $derived((page.props.currentTeam as Team).slug);
@@ -183,6 +186,9 @@
 {/if}
 
 <div class="flex flex-1 flex-col gap-6 px-4 py-8 sm:py-10">
+    {#if review}
+        <ReviewReminder {team} sprint={review} />
+    {/if}
     {#if board}
         <header class="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
             <div class="min-w-0 space-y-1.5">
