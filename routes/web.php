@@ -8,6 +8,7 @@ use App\Http\Controllers\Areas\ProjectController;
 use App\Http\Controllers\Areas\SortingModeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Sprints\SprintController;
+use App\Http\Controllers\Sprints\SprintReviewController;
 use App\Http\Controllers\Tasks\RecurrenceTemplateController;
 use App\Http\Controllers\Tasks\SubtaskController;
 use App\Http\Controllers\Tasks\TaskController;
@@ -60,6 +61,10 @@ Route::prefix('{current_team}')
         Route::get('sprints/{sprint}', [SprintController::class, 'show'])->name('sprints.show');
         Route::patch('sprints/{sprint}', [SprintController::class, 'update'])->name('sprints.update');
         Route::post('sprints/{sprint}/tasks', [SprintController::class, 'addTask'])->name('sprints.tasks.store');
+        // Sprint review after the week ends (ITERA-10)
+        Route::get('sprints/{sprint}/review', [SprintReviewController::class, 'show'])->name('sprints.review');
+        Route::post('sprints/{sprint}/review', [SprintReviewController::class, 'store'])->name('sprints.review.store');
+        Route::patch('sprints/{sprint}/review', [SprintReviewController::class, 'update'])->name('sprints.review.update');
 
         // Kanban board on the dashboard (ITERA-05)
         Route::patch('tasks/{task}/status', TaskStatusController::class)->name('tasks.status.update');

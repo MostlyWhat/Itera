@@ -73,13 +73,14 @@ class SprintController extends Controller
     {
         Gate::authorize('view', $sprint);
 
-        $sprint->load(['commitments.task.project.area', 'commitments.task.subtasks', 'commitments.task.recurrenceTemplate']);
+        $sprint->load(['commitments.task.project.area', 'commitments.task.subtasks', 'commitments.task.recurrenceTemplate', 'retrospective']);
 
         return Inertia::render('sprints/Show', [
             'sprint' => [
                 ...$this->summary($sprint),
                 'editable' => $sprint->isEditable(),
             ],
+            'retrospective' => $sprint->retrospective?->only(['went_well', 'blockers', 'improve_next']),
             'commitments' => $sprint->commitments->map(fn (SprintCommitment $commitment) => [
                 'id' => $commitment->id,
                 'taskId' => $commitment->task_id,
@@ -87,6 +88,8 @@ class SprintController extends Controller
                 'points' => $commitment->committed_points,
                 'projectName' => $commitment->task?->project->name,
                 'status' => $commitment->task?->status->value,
+                'closingStatus' => $commitment->closing_status?->value,
+                'closingLabel' => $commitment->closing_status?->label(),
                 'details' => $commitment->task === null ? null : $this->details($commitment->task),
             ]),
             'candidates' => $sprint->isEditable() ? $this->candidates($sprint) : [],
@@ -185,6 +188,9 @@ class SprintController extends Controller
             'goal' => $sprint->goal,
             'targetPoints' => $sprint->target_points,
             'committedPoints' => $sprint->committedPoints(),
+            'completedPoints' => $sprint->completed_points,
+            'reviewed' => $sprint->review_completed_at !== null,
+            'needsReview' => $sprint->needsReview(),
             'taskCount' => $sprint->commitments->count(),
             'timing' => match (true) {
                 $sprint->isCurrent() => 'current',
