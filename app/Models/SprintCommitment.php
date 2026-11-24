@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ClosingStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\SprintCommitmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $task_id
  * @property string $task_title
  * @property int|null $committed_points
- * @property string|null $closing_status
+ * @property ClosingStatus|null $closing_status
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Sprint $sprint
@@ -48,5 +49,17 @@ class SprintCommitment extends Model
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);
+    }
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'closing_status' => ClosingStatus::class,
+        ];
     }
 }
